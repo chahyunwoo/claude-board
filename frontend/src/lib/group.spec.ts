@@ -67,6 +67,75 @@ describe('groupByState', () => {
     expect(result[0].projects.map((p) => p.name)).toEqual(['오래됨', '중간', '최근'])
   })
 
+  // ⭐ #18 의 회귀 테스트 — 이것이 이 파일의 핵심이다.
+  //
+  // 작업 중 세션은 lastActivityAt 이 5초마다 갱신된다. 그 값으로 정렬하면
+  // "누가 더 오래됐는가"가 매번 뒤집혀 줄이 위아래로 왕복한다.
+  //
+  // 소스가 아니라 **동작(실제로 나온 순서)** 을 관측한다 — 정렬 함수 이름을
+  // 검사하면 배선이 바뀔 때 깨지고, 정작 순서가 틀려도 못 잡는다.
+  it('작업 중 그룹은 활동 시각이 갱신돼도 순서가 안 바뀐다', () => {
+    // 같은 세 프로젝트인데 활동 시각만 서로 다르게 갱신된 두 스냅샷.
+    // 실사용에서 5초 간격으로 실제로 이렇게 온다.
+    const first = groupByState(
+      snapshot([
+        project('bubble-house', 'WORKING', '2026-09-03T09:59:58Z'),
+        project('claude-board', 'WORKING', '2026-09-03T09:59:59Z'),
+        project('apple-pie', 'WORKING', '2026-09-03T09:59:57Z'),
+      ]),
+      false,
+      label,
+    )
+    // 5초 뒤: 각자 활동해서 시각 순위가 완전히 뒤집혔다
+    const second = groupByState(
+      snapshot([
+        project('bubble-house', 'WORKING', '2026-09-03T10:00:04Z'),
+        project('claude-board', 'WORKING', '2026-09-03T10:00:02Z'),
+        project('apple-pie', 'WORKING', '2026-09-03T10:00:03Z'),
+      ]),
+      false,
+      label,
+    )
+
+    const order = (r: ReturnType<typeof groupByState>) => r[0].projects.map((p) => p.name)
+    // 시각이 어떻게 갱신되든 순서는 그대로여야 한다
+    expect(order(first)).toEqual(['apple-pie', 'bubble-house', 'claude-board'])
+    expect(order(second)).toEqual(order(first))
+  })
+
+  // 유휴도 같은 이유로 이름순이다 — 활동이 생기면 WORKING 으로 빠지므로
+  // 여기서도 활동 시각은 흔들리는 키다.
+  it('유휴 그룹도 활동 시각이 갱신돼도 순서가 안 바뀐다', () => {
+    const order = (at: [string, string]) =>
+      groupByState(
+        snapshot([
+          project('zebra', 'IDLE', at[0]),
+          project('alpha', 'IDLE', at[1]),
+        ]),
+        false,
+        label,
+      )[0].projects.map((p) => p.name)
+
+    expect(order(['2026-09-03T08:00:00Z', '2026-09-03T09:00:00Z'])).toEqual(['alpha', 'zebra'])
+    // 시각 순위를 뒤집어도 순서는 유지된다
+    expect(order(['2026-09-03T09:00:00Z', '2026-09-03T08:00:00Z'])).toEqual(['alpha', 'zebra'])
+  })
+
+  // 반대 방향도 지킨다 — 방치된 것을 위로 올리는 가치를 잃으면 안 된다.
+  // 답변 대기·멈춤 의심에서는 활동 시각 정렬이 그대로 유지되어야 한다.
+  it('멈춤 의심은 여전히 오래된 순', () => {
+    const result = groupByState(
+      snapshot([
+        project('aaa-최근', 'STALLED', '2026-09-03T09:59:00Z'),
+        project('zzz-오래됨', 'STALLED', '2026-08-07T10:00:00Z'),
+      ]),
+      false,
+      label,
+    )
+    // 이름순이면 'aaa-최근' 이 먼저 오므로, 이 기대는 시각 정렬만 통과시킨다
+    expect(result[0].projects.map((p) => p.name)).toEqual(['zzz-오래됨', 'aaa-최근'])
+  })
+
   // 0 으로 취급하면 "가장 오래된 것"이 되어 정보 없는 세션이 맨 위를 차지한다.
   it('활동 시각이 없는 것은 맨 뒤로', () => {
     const result = groupByState(
