@@ -1,0 +1,25 @@
+#!/bin/sh
+# 되돌리기 검증(뮤테이션) 잔재가 커밋에 섞이는 것을 막는다.
+#
+# 텍스트 지시로는 다음 세션에 조용히 스킵된다 — 훅으로 강제한다.
+# 패턴은 어간으로 잡는다: MUTATION·MUTATED·MUTANT 를 모두 걸리게 해야 한다
+# (MUTANT|MUTATED 만 쓰면 MUTATION 을 놓친다).
+#
+# 설치: git config core.hooksPath .githooks
+
+# 훅 자신은 제외한다 — 패턴 문자열을 담고 있어 스스로 걸린다.
+staged=$(git diff --cached --name-only --diff-filter=ACM | grep -v '^\.githooks/pre-commit$')
+[ -z "$staged" ] && exit 0
+
+hits=$(git grep --cached -n -E 'MUTAT|MUTANT' -- $staged 2>/dev/null)
+
+if [ -n "$hits" ]; then
+    echo "커밋 거부 — 뮤테이션 잔재가 남아 있습니다:"
+    echo "$hits"
+    echo ""
+    echo "되돌리기 검증에 쓴 임시 변경을 복구한 뒤 다시 커밋하세요."
+    echo "(git checkout 말고 백업 파일 복사로 복구할 것 — 같은 파일의 다른 수정이 날아갑니다)"
+    exit 1
+fi
+
+exit 0

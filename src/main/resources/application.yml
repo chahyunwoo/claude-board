@@ -1,0 +1,26 @@
+server:
+  # 반드시 127.0.0.1. 0.0.0.0 금지.
+  #
+  # 세션 기록에는 프롬프트 전문·절대 경로·브랜치명·PR 정보가 들어 있다.
+  # 이 값이 새면 그 전부가 네트워크에 노출된다. docs/00-개요.md "데이터는 기계를 떠나지 않는다".
+  # 검증: lsof -nP -iTCP -sTCP:LISTEN | grep claude-board → 127.0.0.1:7777 만 나와야 한다.
+  address: 127.0.0.1
+  port: 7777
+
+claude-board:
+  # 수집 주기
+  interval: 5s
+  # 마지막이 도구 결과인데 이만큼 조용하면 멈춤 의심
+  stalled-after: 10m
+  # 이만큼 조용하면 유휴
+  idle-after: 2h
+  # 컨텍스트 상한 기본값. 관측값이 넘으면 자동 상향한다
+  # (기록의 모델명이 claude-opus-5 로만 남아 [1m] 변형이 구분되지 않는다)
+  context-limit: 1000000
+  # 역순 읽기 상한. 넘으면 부분 결과를 반환한다
+  transcript-max-bytes: 512KB
+
+logging:
+  level:
+    root: warn
+    dev.hyunwoo.claudeboard: info
