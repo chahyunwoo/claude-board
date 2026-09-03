@@ -2,6 +2,8 @@ package dev.hyunwoo.claudeboard;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 import java.util.Arrays;
 
@@ -12,6 +14,8 @@ import java.util.Arrays;
  * docs/05-검증.md 의 1~3번이 이 모드를 쓴다.
  */
 @SpringBootApplication
+@EnableScheduling
+@ConfigurationPropertiesScan
 public class ClaudeBoardApplication {
 
     public static void main(String[] args) {
