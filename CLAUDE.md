@@ -9,6 +9,8 @@ Claude Code 세션을 한 화면에서 보는 **로컬 전용** 대시보드.
 Homebrew `openjdk@21` 은 keg-only 라 PATH 에 안 잡힌다. 06-개발환경 참고.
 
 **훅 설치**: 클론 후 `git config core.hooksPath .githooks` (되돌리기 검증 잔재 차단).
+⚠️ **설정됐다고 작동하는 게 아니다** — 한글 파일명을 못 잡고 조용히 통과하던 실측이 있다.
+훅을 고치면 06-개발환경의 전수 검사를 돌린다.
 
 ## 절대 원칙
 
@@ -67,3 +69,15 @@ Homebrew `openjdk@21` 은 keg-only 라 PATH 에 안 잡힌다. 06-개발환경 �
 **"기여자가 1명이고 feature 가 동시에 진행되지 않으면 `dev` 는 병합만 늘리고
 얻는 게 없다"** 고 명시한다. 이 저장소는 개인 도구이고 기여자 1명이므로
 중간 단계를 생략한다. 빠뜨린 것이 아니라 의도한 생략이다.
+
+⚠️ **feature 브랜치는 반드시 `main` 에서 판다.** 다른 feature 위에서 갈라지면
+그쪽 커밋이 내 PR 의 squash 에 딸려 들어가고, **그 이슈는 닫히지 않은 채 남는다.**
+
+> **실측 (#11)**: `feature/9` 에서 `feature/11` 을 팠더니 #9 의 문서 커밋이
+> PR #12 에 함께 머지됐다. 내용 손실은 없었지만 이슈 #9 는 OPEN 인 채였고
+> `feature/9` 브랜치도 남았다 — 이력만 보면 #9 는 아직 안 한 일로 보인다.
+
+```bash
+git checkout main && git pull && git checkout -b feature/N
+git log --oneline main..feature/N | wc -l    # → 0 이어야 한다
+```
