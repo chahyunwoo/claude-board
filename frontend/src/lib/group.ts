@@ -75,11 +75,12 @@ function timeOf(session: Session): number {
  * 상태 그룹으로 나눈다. **빈 그룹은 내지 않는다** — 비어 있는 머리글이 남으면
  * "답변 대기 (0)" 이 화면 맨 위를 차지해 실제 대기 건을 밀어낸다.
  *
- * @param showEnded `ENDED` 는 기본 숨김이고 토글로만 보인다 (docs/03-프론트.md).
+ * **종료 세션을 다루지 않는다** (#17) — 백엔드가 pid 없는 항목을 걸러내므로
+ * 여기 오는 것은 살아있는 세션뿐이다. 이전에는 `showEnded` 로 토글했지만
+ * 그 상태가 실전에서 오지 않아 **토글이 항상 아무것도 하지 않았다.**
  */
 export function groupByState(
   snapshot: BoardSnapshot | null,
-  showEnded: boolean,
   label: (state: SessionState) => string,
 ): StateGroup[] {
   if (!snapshot) {
@@ -87,9 +88,6 @@ export function groupByState(
   }
   const groups: StateGroup[] = []
   for (const state of STATE_ORDER) {
-    if (state === 'ENDED' && !showEnded) {
-      continue
-    }
     const projects = snapshot.projects
       .filter((project) => project.current.state === state)
       .sort(comparatorFor(state))

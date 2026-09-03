@@ -65,8 +65,19 @@ public final class Aggregator {
         Map<Path, Integer> sessionCounts = readSessionCounts(errors);
 
         // cwd 로 묶는다. 입력 순서를 유지해 결과가 흔들리지 않게 한다.
+        //
+        // pid 없는 항목은 여기서 걸러낸다 (#17). 이 보드는 살아있는 세션만 다루므로
+        // 종료된 세션에는 줄 상태가 없다 — docs/00-개요.md "범위 밖".
+        //
+        // errors 에 넣지 않는다. 그 채널은 "읽지 못했다"를 알리는 곳이고
+        // (docs/02-백엔드.md), 화면에서 빨간 테두리로 표시된다. pid 없는 항목을
+        // 건너뛰는 것은 실패가 아니라 정상 동작이므로 에러로 띄우면 거짓 경보가 된다.
+        // 세션 개수는 Project.sessionCount 로 이미 보이니 정보 손실도 없다.
         Map<String, List<Session>> byCwd = new LinkedHashMap<>();
         for (AgentInfo agent : agents) {
+            if (agent.pid() <= 0) {
+                continue;
+            }
             Session session = toSession(agent, files.get(agent.sessionId()), now, errors);
             byCwd.computeIfAbsent(nullSafeCwd(agent), k -> new ArrayList<>()).add(session);
         }
@@ -129,9 +140,9 @@ public final class Aggregator {
             }
         }
 
-        boolean alive = agent.pid() > 0;
+        // pid 는 호출부에서 이미 걸렀다 — 여기 오는 것은 살아있는 세션뿐이다.
         SessionState state = stateResolver.resolve(
-                info.lastRecordKind(), info.lastActivityAt(), alive, now);
+                info.lastRecordKind(), info.lastActivityAt(), now);
 
         Long limit = contextLimitFor(info.contextTokens());
         Double ratio = (info.contextTokens() == null || limit == null || limit == 0)
@@ -140,7 +151,8 @@ public final class Aggregator {
 
         return new Session(
                 agent.sessionId(),
-                alive ? agent.pid() : null,
+                // pid 는 호출부에서 걸렀으므로 항상 양수다 (#17).
+                agent.pid(),
                 state,
                 info.aiTitle(),
                 info.lastPrompt(),

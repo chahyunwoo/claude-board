@@ -12,11 +12,10 @@ export const STATE_LABEL: Record<SessionState, string> = {
   STALLED: '멈춤 의심',
   WORKING: '작업 중',
   IDLE: '유휴',
-  ENDED: '종료',
 }
 
 /** 정렬 우선순위. 백엔드 `SessionState.sortOrder` 와 같은 순서다. */
-export const STATE_ORDER: SessionState[] = ['WAITING', 'STALLED', 'WORKING', 'IDLE', 'ENDED']
+export const STATE_ORDER: SessionState[] = ['WAITING', 'STALLED', 'WORKING', 'IDLE']
 
 /** 값이 없을 때 화면에 내는 것. 빈 문자열로 두면 줄이 무너져 보인다. */
 const NONE = '—'

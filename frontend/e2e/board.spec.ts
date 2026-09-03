@@ -193,22 +193,6 @@ test('errors 가 화면에 나온다 — "없다"와 "못 읽었다"는 다르�
   await expect(page.getByText('첫 수집이 아직 끝나지 않았습니다')).toBeVisible()
 })
 
-test('ended 는 기본 숨김이고 토글로 보인다', async ({ page }) => {
-  await push(
-    page,
-    snapshot({
-      projects: [project('살아있음', 'WAITING'), project('끝남', 'ENDED', { pid: null })],
-    }),
-  )
-
-  await expect(projectName(page, '끝남')).toHaveCount(0)
-  await expect(page.locator('.project')).toHaveCount(1)
-
-  await page.getByLabel('종료 표시').check()
-  await expect(projectName(page, '끝남')).toBeVisible()
-  await expect(page.locator('.project')).toHaveCount(2)
-})
-
 test('프로젝트 줄을 누르면 다른 세션이 펼쳐진다', async ({ page }) => {
   await push(
     page,

@@ -47,7 +47,6 @@ describe('groupByState', () => {
         project('b', 'WAITING', '2026-09-03T09:00:00Z'),
         project('d', 'STALLED', '2026-09-03T09:00:00Z'),
       ]),
-      false,
       label,
     )
     expect(result.map((g) => g.state)).toEqual(['WAITING', 'STALLED', 'WORKING', 'IDLE'])
@@ -61,7 +60,6 @@ describe('groupByState', () => {
         project('오래됨', 'WAITING', '2026-08-07T10:00:00Z'),
         project('중간', 'WAITING', '2026-09-03T08:00:00Z'),
       ]),
-      false,
       label,
     )
     expect(result[0].projects.map((p) => p.name)).toEqual(['오래됨', '중간', '최근'])
@@ -83,7 +81,6 @@ describe('groupByState', () => {
         project('claude-board', 'WORKING', '2026-09-03T09:59:59Z'),
         project('apple-pie', 'WORKING', '2026-09-03T09:59:57Z'),
       ]),
-      false,
       label,
     )
     // 5초 뒤: 각자 활동해서 시각 순위가 완전히 뒤집혔다
@@ -93,7 +90,6 @@ describe('groupByState', () => {
         project('claude-board', 'WORKING', '2026-09-03T10:00:02Z'),
         project('apple-pie', 'WORKING', '2026-09-03T10:00:03Z'),
       ]),
-      false,
       label,
     )
 
@@ -112,7 +108,6 @@ describe('groupByState', () => {
           project('zebra', 'IDLE', at[0]),
           project('alpha', 'IDLE', at[1]),
         ]),
-        false,
         label,
       )[0].projects.map((p) => p.name)
 
@@ -129,7 +124,6 @@ describe('groupByState', () => {
         project('aaa-최근', 'STALLED', '2026-09-03T09:59:00Z'),
         project('zzz-오래됨', 'STALLED', '2026-08-07T10:00:00Z'),
       ]),
-      false,
       label,
     )
     // 이름순이면 'aaa-최근' 이 먼저 오므로, 이 기대는 시각 정렬만 통과시킨다
@@ -143,7 +137,6 @@ describe('groupByState', () => {
         project('시각없음', 'WAITING', null),
         project('오래됨', 'WAITING', '2026-08-07T10:00:00Z'),
       ]),
-      false,
       label,
     )
     expect(result[0].projects.map((p) => p.name)).toEqual(['오래됨', '시각없음'])
@@ -151,28 +144,18 @@ describe('groupByState', () => {
 
   // 비어 있는 머리글이 남으면 실제 대기 건을 아래로 밀어낸다.
   it('빈 그룹은 내지 않는다', () => {
-    const result = groupByState(snapshot([project('a', 'WAITING', null)]), false, label)
+    const result = groupByState(snapshot([project('a', 'WAITING', null)]), label)
     expect(result).toHaveLength(1)
     expect(result[0].label).toBe('답변 대기')
   })
 
-  it('ENDED 는 기본 숨김', () => {
-    const result = groupByState(snapshot([project('끝난것', 'ENDED', null)]), false, label)
-    expect(result).toHaveLength(0)
-  })
-
-  it('ENDED 는 토글하면 보인다', () => {
-    const result = groupByState(snapshot([project('끝난것', 'ENDED', null)]), true, label)
-    expect(result.map((g) => g.state)).toEqual(['ENDED'])
-  })
-
   // docs/05-검증.md 5번 — 세션 0개일 때 깨지지 않아야 한다.
   it('프로젝트가 0개여도 던지지 않는다', () => {
-    expect(groupByState(snapshot([]), false, label)).toEqual([])
+    expect(groupByState(snapshot([]), label)).toEqual([])
   })
 
   it('첫 스냅샷 전(null)에도 던지지 않는다', () => {
-    expect(groupByState(null, false, label)).toEqual([])
+    expect(groupByState(null, label)).toEqual([])
   })
 
   // 정렬이 원본 배열을 갈아엎으면, 다음 계산이 이미 섞인 배열을 다시 정렬하게 된다.
@@ -181,7 +164,7 @@ describe('groupByState', () => {
       project('최근', 'WAITING', '2026-09-03T09:59:00Z'),
       project('오래됨', 'WAITING', '2026-08-07T10:00:00Z'),
     ]
-    groupByState(snapshot(projects), false, label)
+    groupByState(snapshot(projects), label)
     expect(projects.map((p) => p.name)).toEqual(['최근', '오래됨'])
   })
 })

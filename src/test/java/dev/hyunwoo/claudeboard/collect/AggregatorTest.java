@@ -62,6 +62,96 @@ class AggregatorTest {
                 .formatted(ts, input, cacheRead);
     }
 
+    // ── pid 없는 항목 걸러내기 (#17) ────────────────────────────────────
+
+    /**
+     * <b>pid 없는 항목은 스냅샷에 들어오지 않는다.</b>
+     *
+     * <p>이 보드는 살아있는 세션만 다룬다 — 종료된 세션에는 줄 상태가 없다.
+     * 이 가드가 없으면 죽은 세션이 {@code WORKING} 으로 분류되어
+     * <b>화면이 "작업 중"이라고 거짓말을 한다.</b>
+     *
+     * <p>{@code StateResolver} 에서 {@code ENDED} 분기를 걷어냈으므로(#17)
+     * 이 필터가 그 역할을 대신한다. 필터를 지우면 이 테스트가 빨개져야 한다.
+     *
+     * <p>걸러낸 것을 {@code errors} 에 싣지 않는 것도 함께 검사한다 —
+     * 그 채널은 "읽지 못했다"를 알리는 곳이라 정상 동작을 실으면 거짓 경보가 된다.
+     */
+    @Test
+    void pid_없는_항목은_스냅샷에서_제외된다() throws IOException {
+        writeTranscript("-p-live", "live-1", assistantWithUsage(100, 0, "2026-09-03T11:59:00Z"));
+        writeTranscript("-p-dead", "dead-1", assistantWithUsage(100, 0, "2026-09-03T11:59:00Z"));
+
+        // pid 0 = claude agents 가 pid 를 주지 않은 항목 (AgentsReader 의 asLong(0) 기본값)
+        BoardSnapshot snapshot = aggregator("""
+                [{"sessionId":"live-1","pid":1234,"cwd":"/p/live"},
+                 {"sessionId":"dead-1","pid":0,"cwd":"/p/dead"}]""", 1_000_000L)
+                .collect(NOW);
+
+        List<String> ids = snapshot.projects().stream()
+                .map(project -> project.current().sessionId())
+                .toList();
+        assertThat(ids).containsExactly("live-1").doesNotContain("dead-1");
+
+        // errors 에 넣지 않는다 — 그 채널은 "읽지 못했다"를 알리는 곳이고 화면에서
+        // 빨간 테두리로 뜬다. 정상 동작인 필터링을 거기 실으면 거짓 경보가 된다.
+        assertThat(snapshot.errors())
+                .noneSatisfy(message -> assertThat(message).contains("dead-1"));
+    }
+
+    /**
+     * <b>{@code StateResolver.resolve} 의 프로덕션 호출부가 하나뿐인지 센다.</b>
+     *
+     * <p>{@code resolve} 는 <b>죽은 세션이 들어와도 예외를 던지지 않고</b> 조용히
+     * {@code WORKING} 을 낸다 — pid 필터는 호출부의 책임이다. 그래서 새 호출부가
+     * 생기면서 필터를 빠뜨리면 <b>죽은 세션이 "작업 중"으로 표시된다.</b>
+     *
+     * <p>문서로만 적어두면 다음 세션에서 조용히 스킵된다. 호출부 <b>개수</b>를 세어
+     * 새 호출부가 생기는 순간 이 테스트가 빨개지게 한다 — 그때 그 호출부도
+     * pid 를 거르는지 확인하고 이 숫자를 올린다.
+     *
+     * <p>작업협약: "가드를 만들었으면 그 가드가 실제로 불리는가를 센다."
+     */
+    @Test
+    void resolve_의_프로덕션_호출부는_하나뿐이다() throws IOException {
+        Path mainJava = Path.of("src/main/java");
+        try (var paths = Files.walk(mainJava)) {
+            List<String> callSites = paths
+                    .filter(path -> path.toString().endsWith(".java"))
+                    .flatMap(path -> {
+                        try {
+                            String src = Files.readString(path, StandardCharsets.UTF_8);
+                            return src.lines()
+                                    .filter(line -> line.contains("stateResolver.resolve(")
+                                            || line.contains("Resolver().resolve("))
+                                    .map(line -> path.getFileName() + ": " + line.strip());
+                        } catch (IOException e) {
+                            throw new IllegalStateException("소스를 읽지 못함: " + path, e);
+                        }
+                    })
+                    .toList();
+
+            assertThat(callSites)
+                    .as("새 호출부가 생겼다면 그쪽도 pid 를 거르는지 확인하고 이 숫자를 올려라")
+                    .hasSize(1);
+            assertThat(callSites.get(0)).contains("Aggregator.java");
+        }
+    }
+
+    /** 걸러진 뒤에도 살아있는 세션의 pid 는 그대로 실려 나간다. */
+    @Test
+    void 살아있는_세션의_pid_는_그대로_나온다() throws IOException {
+        writeTranscript("-p-live", "live-1", assistantWithUsage(100, 0, "2026-09-03T11:59:00Z"));
+
+        BoardSnapshot snapshot = aggregator(
+                """
+                [{"sessionId":"live-1","pid":4242,"cwd":"/p/live"}]""", 1_000_000L)
+                .collect(NOW);
+
+        assertThat(snapshot.projects()).hasSize(1);
+        assertThat(snapshot.projects().get(0).current().pid()).isEqualTo(4242L);
+    }
+
     // ── 컨텍스트 상한 자동 상향 ─────────────────────────────────────────
 
     /**

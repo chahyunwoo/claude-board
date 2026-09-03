@@ -88,11 +88,4 @@ describe('SessionLine', () => {
     })
     expect(wrapper.classes()).toContain('state-stalled')
   })
-
-  it('pid 가 없으면 그 사실을 낸다', () => {
-    const wrapper = mount(SessionLine, {
-      props: { session: session({ pid: null }), now: NOW },
-    })
-    expect(wrapper.text()).toContain('프로세스 없음')
-  })
 })

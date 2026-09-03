@@ -22,7 +22,6 @@
   --state-stalled: #c9584f;  /* 레드 */
   --state-working: #5f9e6a;  /* 그린 */
   --state-idle: #6b7280;     /* 회색 */
-  --state-ended: #4a5060;
 
   color-scheme: dark;
 }
@@ -43,7 +42,13 @@ body {
   scrollbar-gutter: stable;
 }
 
-/* 상태별 색. 머리글의 글자색과 줄의 왼쪽 띠에 같은 변수를 쓴다. */
+/*
+ * 상태별 색. 머리글의 글자색과 줄의 왼쪽 띠에 같은 변수를 쓴다.
+ *
+ * 클래스명은 `state-${state.toLowerCase()}` 로 동적 생성되므로
+ * SessionState 4종과 1:1 이어야 한다 — 없는 상태를 정의하면 고아 CSS 가 된다
+ * (#17 에서 `state-ended` 가 그렇게 남아 있었다).
+ */
 .state-waiting {
   --state-color: var(--state-waiting);
   color: var(--state-waiting);
@@ -60,11 +65,6 @@ body {
   --state-color: var(--state-idle);
   color: var(--state-idle);
 }
-.state-ended {
-  --state-color: var(--state-ended);
-  color: var(--state-ended);
-}
-
 /* 갱신마다 요소가 사라졌다 나타나는 것처럼 보이지 않게 한다. */
 @media (prefers-reduced-motion: reduce) {
   * {

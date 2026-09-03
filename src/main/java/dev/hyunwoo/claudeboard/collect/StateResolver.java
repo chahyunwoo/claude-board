@@ -15,6 +15,11 @@ import java.time.Instant;
  *
  * <p>시각은 주입받는다({@code now}). 그래야 임계 판정을 테스트에서 결정적으로 검사할 수 있다.
  *
+ * <p><b>종료 상태를 다루지 않는다</b> (#17). 이전에는 {@code alive} 를 받아
+ * {@code ENDED} 를 냈지만, {@code Aggregator} 가 살아있는 세션만 순회하므로
+ * 그 분기는 <b>실전에서 도달 불가능</b>했다 — 단위 테스트에서만 닿는 죽은 코드였다.
+ * 지금은 살아있는 세션만 받고, 호출부가 pid 없는 항목을 걸러낸다.
+ *
  * <p>Spring 에 의존하지 않는 순수 자바다.
  */
 public final class StateResolver {
@@ -38,17 +43,21 @@ public final class StateResolver {
     /**
      * 상태를 판정한다.
      *
+     * <p><b>살아있는 세션만 받는다.</b> 종료된 세션은 상태를 갖지 않는다 (#17) —
+     * <b>호출부가 pid 없는 항목을 미리 걸러야 한다.</b>
+     *
+     * <p>여기서 검사하지 않는 이유: 이 클래스는 "마지막 레코드와 시각으로 상태를 정한다"만
+     * 하고, "그 세션이 살아있는가"는 {@code Aggregator} 가 아는 사실이다.
+     * 다만 <b>걸러지지 않은 죽은 세션이 들어오면 조용히 {@code WORKING} 이 된다</b> —
+     * 예외로 막아주지 않으므로, 새 호출부를 만들 때 필터를 빠뜨리면
+     * <b>죽은 세션이 "작업 중"으로 표시되어 도구가 거짓말을 한다.</b>
+     * 그 필터가 실제로 걸려 있는지는 {@code AggregatorTest} 가 지킨다.
+     *
      * @param lastRecordKind 세션 기록 끝에서 찾은 마지막 대화 레코드의 종류
      * @param lastActivityAt 그 레코드의 시각. null 이면 임계 판정을 하지 않는다
-     * @param alive          {@code claude agents --json} 에 pid 가 있는가
      * @param now            현재 시각 (주입)
      */
-    public SessionState resolve(RecordKind lastRecordKind, Instant lastActivityAt, boolean alive, Instant now) {
-        // pid 가 없으면 기록만 남은 세션이다. 내용과 무관하게 종료.
-        if (!alive) {
-            return SessionState.ENDED;
-        }
-
+    public SessionState resolve(RecordKind lastRecordKind, Instant lastActivityAt, Instant now) {
         Duration quiet = quietFor(lastActivityAt, now);
 
         // 마지막이 assistant + text 면 사용자 차례다 — 답변 대기.

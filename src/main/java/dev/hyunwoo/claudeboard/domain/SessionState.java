@@ -1,9 +1,13 @@
 package dev.hyunwoo.claudeboard.domain;
 
 /**
- * 세션 상태 5종. docs/01-데이터.md "최종 상태 5종" 참고.
+ * 세션 상태 4종. docs/01-데이터.md "최종 상태" 참고.
  *
  * <p>{@link #sortOrder} 는 보드 정렬 우선순위다. 답변 대기가 가장 높은 가치이므로 1.
+ *
+ * <p><b>종료된 세션은 상태로 두지 않는다</b> (#17). 이 보드는 살아있는 세션만 다룬다 —
+ * {@code claude agents --json} 이 주는 목록이 곧 대상이고, 종료된 기록은
+ * {@code Project.sessionCount} 로 개수만 센다. docs/00-개요.md "범위 밖".
  */
 public enum SessionState {
 
@@ -17,10 +21,7 @@ public enum SessionState {
     WORKING(3),
 
     /** 유휴 — 살아있으나 오래 조용함. */
-    IDLE(4),
-
-    /** 종료 — pid 없음. 기록만 존재. */
-    ENDED(5);
+    IDLE(4);
 
     private final int sortOrder;
 
