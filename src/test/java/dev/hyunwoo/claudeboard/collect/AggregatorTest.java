@@ -73,6 +73,9 @@ class AggregatorTest {
      *
      * <p>{@code StateResolver} 에서 {@code ENDED} 분기를 걷어냈으므로(#17)
      * 이 필터가 그 역할을 대신한다. 필터를 지우면 이 테스트가 빨개져야 한다.
+     *
+     * <p>걸러낸 것을 {@code errors} 에 싣지 않는 것도 함께 검사한다 —
+     * 그 채널은 "읽지 못했다"를 알리는 곳이라 정상 동작을 실으면 거짓 경보가 된다.
      */
     @Test
     void pid_없는_항목은_스냅샷에서_제외된다() throws IOException {
@@ -90,9 +93,10 @@ class AggregatorTest {
                 .toList();
         assertThat(ids).containsExactly("live-1").doesNotContain("dead-1");
 
-        // 조용히 버리지 않는다 — 삼키면 "세션이 없다"와 "걸러냈다"가 구별되지 않는다.
+        // errors 에 넣지 않는다 — 그 채널은 "읽지 못했다"를 알리는 곳이고 화면에서
+        // 빨간 테두리로 뜬다. 정상 동작인 필터링을 거기 실으면 거짓 경보가 된다.
         assertThat(snapshot.errors())
-                .anySatisfy(message -> assertThat(message).contains("dead-1").contains("pid"));
+                .noneSatisfy(message -> assertThat(message).contains("dead-1"));
     }
 
     /** 걸러진 뒤에도 살아있는 세션의 pid 는 그대로 실려 나간다. */
