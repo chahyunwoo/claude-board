@@ -29,6 +29,11 @@
   --color-state-working: #5f9e6a;  /* 그린 */
   --color-state-idle: #6b7280;     /* 회색 */
 
+  /* 컨텍스트 경고 (#23). 상태 색과 겹치지 않게 고른다 — 상태는 위치·라벨로 이미 구분되고
+     여기서는 "새 세션을 열 시점인가"만 말한다. */
+  --color-ctx-warn: #c9a227;    /* 70%+ — 준비할 시점 */
+  --color-ctx-danger: #d4653f;  /* 85%+ — 지금 열 시점 */
+
   --font-sans: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Apple SD Gothic Neo',
     'Segoe UI', sans-serif;
 }
@@ -73,6 +78,23 @@ body {
 .state-idle {
   --state-color: var(--color-state-idle);
   color: var(--color-state-idle);
+}
+
+/*
+ * 컨텍스트 경고 (#23). docs/00-개요.md 목표 3 "컨텍스트 사용량과 경고".
+ *
+ * ⚠️ `.state-*` 와 같은 이유로 **Tailwind 유틸리티로 바꾸지 말 것** —
+ * `ctx-${contextLevel}` 로 동적 생성되어 스캔되지 않는다.
+ *
+ * `normal` 은 클래스만 붙고 색을 바꾸지 않는다. 대부분이 normal 이므로
+ * 여기에 색을 주면 경고가 눈에 안 띈다 — 평소엔 조용해야 경고가 보인다.
+ */
+.ctx-warn {
+  color: var(--color-ctx-warn);
+}
+.ctx-danger {
+  color: var(--color-ctx-danger);
+  font-weight: 600;
 }
 
 /* 갱신마다 요소가 사라졌다 나타나는 것처럼 보이지 않게 한다. */

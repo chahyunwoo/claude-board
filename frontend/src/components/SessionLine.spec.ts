@@ -88,4 +88,32 @@ describe('SessionLine', () => {
     })
     expect(wrapper.classes()).toContain('state-stalled')
   })
+
+  // #23 — 헬퍼가 옳아도 템플릿이 그것을 안 부르면 화면엔 안 보인다.
+  // 그래서 순수 함수 테스트(format.spec.ts)와 **별도로** 마운트한 DOM 을 본다.
+  it('컨텍스트가 위험 수위면 클래스로 드러난다', () => {
+    const wrapper = mount(SessionLine, {
+      props: { session: session({ contextRatio: 0.9, contextTokens: 900_000, contextLimit: 1_000_000 }), now: NOW },
+    })
+    expect(wrapper.find('.ctx-danger').exists()).toBe(true)
+    // 절대값 표시는 사라지지 않는다 — 분모가 틀릴 수 있어 경고는 보조다
+    expect(wrapper.text()).toContain('900K')
+  })
+
+  it('경고 수위면 warn 클래스', () => {
+    const wrapper = mount(SessionLine, {
+      props: { session: session({ contextRatio: 0.75, contextTokens: 750_000, contextLimit: 1_000_000 }), now: NOW },
+    })
+    expect(wrapper.find('.ctx-warn').exists()).toBe(true)
+    expect(wrapper.find('.ctx-danger').exists()).toBe(false)
+  })
+
+  it('평소에는 경고 클래스가 붙지 않는다 — 조용해야 경고가 보인다', () => {
+    const wrapper = mount(SessionLine, {
+      props: { session: session({ contextRatio: 0.2, contextTokens: 200_000, contextLimit: 1_000_000 }), now: NOW },
+    })
+    expect(wrapper.find('.ctx-warn').exists()).toBe(false)
+    expect(wrapper.find('.ctx-danger').exists()).toBe(false)
+    expect(wrapper.find('.ctx-normal').exists()).toBe(true)
+  })
 })
