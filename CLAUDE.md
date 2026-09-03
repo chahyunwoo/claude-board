@@ -2,7 +2,13 @@
 
 Claude Code 세션을 한 화면에서 보는 **로컬 전용** 대시보드.
 
-착수 전 [docs/00-개요.md](docs/00-개요.md) 의 **미결 사항**을 확인할 것.
+착수 전 [docs/00-개요.md](docs/00-개요.md) 의 **미결 사항**과
+[docs/06-개발환경.md](docs/06-개발환경.md) 를 확인할 것.
+
+**JDK 함정**: `java -version` 이 실패해도 설치가 안 된 게 아닐 수 있다 —
+Homebrew `openjdk@21` 은 keg-only 라 PATH 에 안 잡힌다. 06-개발환경 참고.
+
+**훅 설치**: 클론 후 `git config core.hooksPath .githooks` (되돌리기 검증 잔재 차단).
 
 ## 절대 원칙
 
@@ -19,6 +25,7 @@ Claude Code 세션을 한 화면에서 보는 **로컬 전용** 대시보드.
 |---|---|
 | **바인딩 주소 변경** | `0.0.0.0` 으로 새면 세션 기록이 네트워크에 노출된다 |
 | **상태 판별 로직** (`collect/StateResolver.java`) | 틀리면 "답변 대기"와 "작업 중"이 뒤바뀌어 도구 전체가 거짓말을 한다 |
+| **블록 판별** (`collect/TranscriptReader.java` 의 `hasBlock`) | `tool_use`/`tool_result` 를 놓치면 위와 같은 결과가 된다. 실측으로 이미 한 번 났다 |
 | **역순 리더** (`collect/TranscriptReader.java`) | 전체 파싱으로 퇴행하면 갱신마다 수백 ms 가 날아가고 체감이 무너진다 |
 | **배포 패키징** | 세션 데이터가 jar 에 섞여 공개되면 되돌릴 수 없다 |
 
@@ -37,6 +44,15 @@ Claude Code 세션을 한 화면에서 보는 **로컬 전용** 대시보드.
 ```
 
 `collect/` 는 Spring 에 의존하지 않는 순수 자바로 둔다.
+
+## 커밋·PR
+
+- 커밋 형식: `[#이슈번호] 한글 요약` (예: `[#1] collect 구현`)
+- **AI attribution 을 넣지 않는다** (전역 `git-workflow.md`)
+- PR 본문에 **실행한 명령과 그 출력**을 남긴다 ([docs/05-검증.md](docs/05-검증.md))
+- **PR 을 직접 머지하지 않는다.** `main` 은 보호돼 있고 `ci` 통과가 필수다.
+  게이트 작동을 확인한다며 보호 브랜치를 실제로 움직이지 말 것 —
+  실측으로 PR 이 머지된 사고가 있었다 ([docs/06-개발환경.md](docs/06-개발환경.md))
 
 ## 브랜치
 
