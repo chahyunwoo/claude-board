@@ -1,0 +1,8 @@
+node_modules/
+dist/
+playwright-report/
+test-results/
+*.local
+
+# 타입체크 캐시 (산출물)
+*.tsbuildinfo
