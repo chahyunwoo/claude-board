@@ -171,7 +171,13 @@ h2 .n {
  */
 .rows {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(38rem, 1fr));
+  /*
+   * ⚠️ `min()` 이 없으면 좁은 화면에서 가로 스크롤이 생긴다 — 실측으로 밟았다:
+   * `minmax(38rem, …)` 의 최소값 608px 가 375px 화면에서도 강제되어
+   * scrollWidth 가 624px 가 됐다 (docs/05-검증.md 5번 "가로 오버플로 0" 위반).
+   * `min(100%, 38rem)` 으로 두면 화면이 좁을 때 최소값이 화면 폭까지 줄어든다.
+   */
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 38rem), 1fr));
   gap: 0.5rem;
   align-items: start;
 }

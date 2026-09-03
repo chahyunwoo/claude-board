@@ -186,6 +186,19 @@ describe('contextLevelOf', () => {
     expect(contextLevelOf(session({ contextRatio: null, contextTokens: 500_000, contextLimit: 0 })))
       .toBe('normal')
   })
+
+  // 관측값이 상한을 넘을 수 있다 — 기록의 모델명이 claude-opus-5 로만 남아
+  // [1m] 변형이 구분되지 않는다 (docs/00-개요.md 결정사항 3).
+  it('상한을 넘으면 danger', () => {
+    expect(contextLevelOf(at(1.0))).toBe('danger')
+    expect(contextLevelOf(at(1.2))).toBe('danger')
+  })
+
+  // 값이 이상하면 경고하지 않는다. 모르는 것을 위험으로 표시하면 거짓 경보다.
+  it('음수나 NaN 은 normal', () => {
+    expect(contextLevelOf(at(-0.5))).toBe('normal')
+    expect(contextLevelOf(at(Number.NaN))).toBe('normal')
+  })
 })
 
 // #23 — 시스템 태그가 프롬프트 줄을 통째로 먹던 문제.
