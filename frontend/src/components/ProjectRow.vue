@@ -75,9 +75,9 @@ function toggle() {
 
 <style scoped>
 .project {
-  border: 1px solid var(--border);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
-  background: var(--panel);
+  background: var(--color-panel);
   overflow: hidden;
 }
 
@@ -86,23 +86,23 @@ function toggle() {
 }
 
 .current.clickable:hover {
-  background: var(--panel-hover);
+  background: var(--color-panel-hover);
 }
 
 .current:focus-visible {
-  outline: 2px solid var(--focus);
+  outline: 2px solid var(--color-focus);
   outline-offset: -2px;
 }
 
 .others-hint {
   padding: 0 0.75rem 0.375rem 0.9375rem;
-  color: var(--fg-faint);
+  color: var(--color-fg-faint);
   font-size: 0.75rem;
 }
 
 .others {
-  border-top: 1px solid var(--border);
-  background: var(--panel-sunken);
+  border-top: 1px solid var(--color-border);
+  background: var(--color-panel-sunken);
 }
 
 .foot {
@@ -110,9 +110,9 @@ function toggle() {
   align-items: center;
   gap: 0.5rem;
   padding: 0.25rem 0.75rem;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--color-border);
   font-size: 0.75rem;
-  color: var(--fg-faint);
+  color: var(--color-fg-faint);
 }
 
 .cwd {
@@ -131,16 +131,16 @@ function toggle() {
 }
 
 .cwd:hover {
-  color: var(--fg-dim);
+  color: var(--color-fg-dim);
 }
 
 .copied {
   flex: none;
-  color: var(--state-working);
+  color: var(--color-state-working);
 }
 
 .copied.fail {
-  color: var(--state-stalled);
+  color: var(--color-state-stalled);
 }
 
 .count {

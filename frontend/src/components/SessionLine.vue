@@ -71,7 +71,7 @@ const untitled = computed(() => !props.session.title?.trim())
 }
 
 .name {
-  color: var(--fg);
+  color: var(--color-fg);
   font-weight: 600;
   /* 프로젝트명이 아무리 길어도 제목을 밀어내지 않는다. */
   max-width: 22ch;
@@ -81,7 +81,7 @@ const untitled = computed(() => !props.session.title?.trim())
 }
 
 .branch {
-  color: var(--fg-dim);
+  color: var(--color-fg-dim);
   font-size: 0.8125rem;
   /* 긴 브랜치명은 여기서 잘린다. 전문은 title 속성으로 본다. */
   max-width: 24ch;
@@ -91,7 +91,7 @@ const untitled = computed(() => !props.session.title?.trim())
 }
 
 .title {
-  color: var(--fg-soft);
+  color: var(--color-fg-soft);
   /* 남는 폭을 다 쓰되, 넘치면 말줄임. min-width:0 이 없으면 flex 가 안 줄어든다. */
   flex: 1 1 12rem;
   min-width: 0;
@@ -101,13 +101,13 @@ const untitled = computed(() => !props.session.title?.trim())
 }
 
 .title.untitled {
-  color: var(--fg-faint);
+  color: var(--color-fg-faint);
   font-style: italic;
 }
 
 .meta {
   margin-top: 0.1875rem;
-  color: var(--fg-dim);
+  color: var(--color-fg-dim);
   font-size: 0.8125rem;
   display: flex;
   gap: 0.375rem;
@@ -115,14 +115,14 @@ const untitled = computed(() => !props.session.title?.trim())
 }
 
 .dot {
-  color: var(--fg-faint);
+  color: var(--color-fg-faint);
 }
 
 .prompt {
   margin-top: 0.1875rem;
   display: flex;
   gap: 0.375rem;
-  color: var(--fg-faint);
+  color: var(--color-fg-faint);
   font-size: 0.8125rem;
   min-width: 0;
 }

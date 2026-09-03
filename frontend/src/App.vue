@@ -87,7 +87,7 @@ const empty = computed(() => snapshot.value !== null && snapshot.value.projects.
   gap: 1rem;
   flex-wrap: wrap;
   padding-bottom: 0.75rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 h1 {
@@ -95,43 +95,43 @@ h1 {
   font-size: 0.9375rem;
   font-weight: 600;
   letter-spacing: 0.08em;
-  color: var(--fg);
+  color: var(--color-fg);
 }
 
 .summary {
   display: flex;
   gap: 0.375rem;
-  color: var(--fg-dim);
+  color: var(--color-fg-dim);
   font-size: 0.8125rem;
   /* 남는 폭을 먹어 토글을 오른쪽 끝으로 민다. */
   flex: 1 1 auto;
 }
 
 .dot {
-  color: var(--fg-faint);
+  color: var(--color-fg-faint);
 }
 
 .conn {
-  color: var(--state-stalled);
+  color: var(--color-state-stalled);
 }
 
 .conn.live {
-  color: var(--state-working);
+  color: var(--color-state-working);
 }
 
 .errors {
   margin: 0.75rem 0 0;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--state-stalled);
+  border: 1px solid var(--color-state-stalled);
   border-radius: 6px;
-  color: var(--state-stalled);
+  color: var(--color-state-stalled);
   font-size: 0.8125rem;
   list-style: none;
 }
 
 .notice {
   margin: 2rem 0;
-  color: var(--fg-faint);
+  color: var(--color-fg-faint);
   text-align: center;
 }
 
@@ -147,7 +147,7 @@ h2 {
 }
 
 h2 .n {
-  color: var(--fg-faint);
+  color: var(--color-fg-faint);
   font-weight: 400;
 }
 

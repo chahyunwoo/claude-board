@@ -1,5 +1,6 @@
 import { fileURLToPath, URL } from 'node:url'
 
+import tailwindcss from '@tailwindcss/vite'
 import vue from '@vitejs/plugin-vue'
 import { defineConfig } from 'vitest/config'
 
@@ -11,7 +12,9 @@ import { defineConfig } from 'vitest/config'
  * 여는 순간 "데이터는 이 기계를 떠나지 않는다" 의 경계가 흐려진다 (docs/03-프론트.md).
  */
 export default defineConfig({
-  plugins: [vue()],
+  // Tailwind v4 는 PostCSS 를 거치지 않고 Vite 플러그인으로 붙인다 (#16).
+  // 그래서 postcss.config.js 가 필요 없다.
+  plugins: [vue(), tailwindcss()],
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
