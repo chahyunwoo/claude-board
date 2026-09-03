@@ -8,7 +8,6 @@
  * 적으면 렌더가 `undefined` 를 그대로 뿌린다.
  */
 
-/** 상태 5종. docs/01-데이터.md "최종 상태 5종". */
 /**
  * 세션 상태 4종. 백엔드 `domain/SessionState.java` 와 1:1.
  *
