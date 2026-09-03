@@ -17,6 +17,13 @@ node_modules/
 dist/
 coverage/
 .vite/
+playwright-report/
+test-results/
+
+# Vue 빌드 결과가 떨어지는 곳. **산출물이므로 커밋하지 않는다** —
+# `frontend/` 에서 `npm run build` 하면 생기고, `bootJar` 가 그것을 jar 에 넣는다.
+# 커밋하면 소스와 산출물이 어긋난 채로 배포되는 경로가 생긴다.
+src/main/resources/static/
 
 # IDE
 .idea/

@@ -1,0 +1,74 @@
+/*
+ * 상시 표시를 고려한다 (docs/03-프론트.md "상시 표시를 고려한 처리"):
+ * 배경은 어둡게, 전체 휘도를 낮게, 깜빡이는 애니메이션 금지.
+ *
+ * 상태는 **색이 아니라 위치와 라벨로** 먼저 구분한다. 색은 보조다.
+ */
+:root {
+  --bg: #0f1115;
+  --panel: #161920;
+  --panel-hover: #1b1f28;
+  --panel-sunken: #12151b;
+  --border: #232733;
+  --focus: #3d5a80;
+
+  --fg: #d5d9e0;
+  --fg-soft: #aeb4c0;
+  --fg-dim: #7d8492;
+  --fg-faint: #5a6070;
+
+  /* docs/03-프론트.md "시각 규칙" */
+  --state-waiting: #d9a441;  /* 앰버 — 시선을 끌어야 한다 */
+  --state-stalled: #c9584f;  /* 레드 */
+  --state-working: #5f9e6a;  /* 그린 */
+  --state-idle: #6b7280;     /* 회색 */
+  --state-ended: #4a5060;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg-soft);
+  font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Apple SD Gothic Neo',
+    'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  /* 갱신 시 스크롤바가 생겼다 사라지며 레이아웃이 튀는 것을 막는다. */
+  scrollbar-gutter: stable;
+}
+
+/* 상태별 색. 머리글의 글자색과 줄의 왼쪽 띠에 같은 변수를 쓴다. */
+.state-waiting {
+  --state-color: var(--state-waiting);
+  color: var(--state-waiting);
+}
+.state-stalled {
+  --state-color: var(--state-stalled);
+  color: var(--state-stalled);
+}
+.state-working {
+  --state-color: var(--state-working);
+  color: var(--state-working);
+}
+.state-idle {
+  --state-color: var(--state-idle);
+  color: var(--state-idle);
+}
+.state-ended {
+  --state-color: var(--state-ended);
+  color: var(--state-ended);
+}
+
+/* 갱신마다 요소가 사라졌다 나타나는 것처럼 보이지 않게 한다. */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}

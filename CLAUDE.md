@@ -2,7 +2,7 @@
 
 Claude Code 세션을 한 화면에서 보는 **로컬 전용** 대시보드.
 
-착수 전 [docs/00-개요.md](docs/00-개요.md) 의 **미결 사항**과
+착수 전 [docs/00-개요.md](docs/00-개요.md) 의 **결정된 사항**과
 [docs/06-개발환경.md](docs/06-개발환경.md) 를 확인할 것.
 
 **JDK 함정**: `java -version` 이 실패해도 설치가 안 된 게 아닐 수 있다 —
@@ -27,6 +27,7 @@ Homebrew `openjdk@21` 은 keg-only 라 PATH 에 안 잡힌다. 06-개발환경 �
 | **상태 판별 로직** (`collect/StateResolver.java`) | 틀리면 "답변 대기"와 "작업 중"이 뒤바뀌어 도구 전체가 거짓말을 한다 |
 | **블록 판별** (`collect/TranscriptReader.java` 의 `hasBlock`) | `tool_use`/`tool_result` 를 놓치면 위와 같은 결과가 된다. 실측으로 이미 한 번 났다 |
 | **역순 리더** (`collect/TranscriptReader.java`) | 전체 파싱으로 퇴행하면 갱신마다 수백 ms 가 날아가고 체감이 무너진다 |
+| **SSE emitter 정리** (`web/StreamController.java`) | 누수는 예외 없이 조용히 쌓인다. 콜백 셋을 다 걸어도 안 막힌다 — 실측으로 한 번 났다 ([docs/02-백엔드.md](docs/02-백엔드.md)) |
 | **배포 패키징** | 세션 데이터가 jar 에 섞여 공개되면 되돌릴 수 없다 |
 
 단순 조회·포맷팅·스타일 작업은 Sonnet.
