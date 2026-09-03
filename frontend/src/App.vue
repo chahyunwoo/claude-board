@@ -76,7 +76,14 @@ const empty = computed(() => snapshot.value !== null && snapshot.value.projects.
 
 <style scoped>
 .board {
-  max-width: 68rem;
+  /*
+   * 넓은 화면을 쓴다 (#23). 상시 표시(Studio Display 한쪽)가 전제인데
+   * 68rem 고정이면 2560px 화면에서 42%만 쓰고 양옆이 텅 빈다 —
+   * 세션이 20개만 넘어도 스크롤해야 해서 "한 화면에서 본다"(docs/00-개요.md 목표 1)가 깨진다.
+   *
+   * 폭 자체는 열어두고, 한 줄이 길어지는 문제는 아래 .rows 의 다열 배치로 푼다.
+   */
+  max-width: 160rem;
   margin: 0 auto;
   padding: 1.25rem 1rem 3rem;
 }
@@ -151,9 +158,21 @@ h2 .n {
   font-weight: 400;
 }
 
+/*
+ * 화면이 넓으면 열이 늘어난다 (#23).
+ *
+ * `auto-fill` + `minmax` 라 화면 폭에 따라 자동으로 1→2→3열이 되고,
+ * 미디어 쿼리로 중단점을 손으로 관리하지 않아도 된다.
+ *
+ * ⚠️ `grid-auto-flow` 를 바꾸지 말 것. 기본값(row)이라 **왼쪽에서 오른쪽, 그 다음 아래**로
+ * 채워진다 — 각 그룹 안은 이미 정렬돼 있고(오래된 순 또는 이름순, docs/03-프론트.md)
+ * 위쪽이 더 급한 건이므로 그 순서가 읽기 순서와 같아야 한다.
+ * `column` 으로 두면 첫 열을 다 채운 뒤 다음 열로 가서 순서가 뒤섞여 보인다.
+ */
 .rows {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(38rem, 1fr));
   gap: 0.5rem;
+  align-items: start;
 }
 </style>
