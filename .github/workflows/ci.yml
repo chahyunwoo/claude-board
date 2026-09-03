@@ -15,13 +15,13 @@ permissions:
   contents: read
 
 jobs:
-  # 어떤 영역이 바뀌었는지 판단한다.
-  # 프론트는 아직 없다 — 생기면 자동으로 아래 잡들이 돈다.
+  # 어떤 영역이 바뀌었는지 판단한다. 바뀐 영역의 잡만 돈다.
   changes:
     runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
+      hooks: ${{ steps.filter.outputs.hooks }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -36,6 +36,67 @@ jobs:
               - 'gradlew'
             frontend:
               - 'frontend/**'
+            hooks:
+              - '.githooks/**'
+
+  # 훅이 **실제로 작동하는지** 검사한다.
+  #
+  # 실측(#13): 훅이 설정돼 있고 실행권한도 있는데 한글 파일명을 전혀 검사하지 못해,
+  # 문서에 잔재를 넣어도 여섯 번 다 통과했다 — 예외도 에러도 없이 조용히.
+  # "훅이 존재한다"와 "훅이 잡는다" 사이의 간격은 사람이 기억해서 메울 수 없다.
+  hooks:
+    needs: changes
+    if: needs.changes.outputs.hooks == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 훅이 잔재를 실제로 잡는가
+        run: |
+          git config core.hooksPath .githooks
+          git config user.email ci@example.com
+          git config user.name CI
+
+          fail=0
+
+          # 세 형태 × 한글·영문 파일명. 한글 쪽이 이번에 죽어 있던 경로다.
+          for word in MUTATION MUTATED MUTANT; do
+            for f in "src/한글테스트.java" "src/asciitest.java"; do
+              printf '// %s\n' "$word" > "$f"
+              git add -A
+              if sh .githooks/pre-commit >/dev/null 2>&1; then
+                echo "::error::$word 를 $f 에서 잡지 못했습니다"
+                fail=1
+              else
+                echo "  ✓ $word in $f — 거부됨"
+              fi
+              rm -f "$f"
+            done
+          done
+
+          # 위양성: MutationObserver 는 정당한 브라우저 API 다(패턴이 대문자라 안 걸려야 한다).
+          printf 'const o = new MutationObserver(() => {})\n' > src/fptest.ts
+          git add -A
+          if sh .githooks/pre-commit >/dev/null 2>&1; then
+            echo "  ✓ MutationObserver — 위양성 없음"
+          else
+            echo "::error::정당한 코드(MutationObserver)를 거부합니다"
+            fail=1
+          fi
+          rm -f src/fptest.ts
+          git add -A
+
+          # 깨끗할 때는 통과해야 한다 — 무조건 거부하는 훅은 훅이 아니라 벽이다.
+          # **임시 파일을 다 치운 뒤에** 봐야 의미가 있다.
+          if sh .githooks/pre-commit >/dev/null 2>&1; then
+            echo "  ✓ 깨끗한 상태 — 통과"
+          else
+            echo "::error::잔재가 없는데도 커밋을 거부합니다"
+            sh .githooks/pre-commit || true
+            fail=1
+          fi
+
+          exit $fail
 
   backend:
     needs: changes
@@ -161,7 +222,7 @@ jobs:
   # 개별 잡은 변경 영역에 따라 건너뛸 수 있으므로 여기서 한 번에 판정한다.
   # 스킵은 통과로 보되, 실패·취소는 통과시키지 않는다.
   ci:
-    needs: [backend, frontend, e2e]
+    needs: [backend, frontend, e2e, hooks]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -170,9 +231,11 @@ jobs:
           echo "backend : ${{ needs.backend.result }}"
           echo "frontend: ${{ needs.frontend.result }}"
           echo "e2e     : ${{ needs.e2e.result }}"
+          echo "hooks   : ${{ needs.hooks.result }}"
           for r in "${{ needs.backend.result }}" \
                    "${{ needs.frontend.result }}" \
-                   "${{ needs.e2e.result }}"; do
+                   "${{ needs.e2e.result }}" \
+                   "${{ needs.hooks.result }}"; do
             case "$r" in
               success|skipped) ;;
               *) echo "::error::실패한 잡이 있습니다"; exit 1 ;;
