@@ -134,13 +134,6 @@ public class StreamController {
     }
 
     /**
-     * 한 건 보낸다.
-     *
-     * <p>쓰기 실패는 <b>연결이 끊겼다는 뜻</b>이다(브라우저 탭 닫힘 등). 정상적인 일이므로
-     * 에러로 시끄럽게 남기지 않되, 반드시 {@code completeWithError} 로 넘겨
-     * {@code onError} → 정리까지 이어지게 한다. 여기서 삼키면 구독이 그대로 남는다.
-     */
-    /**
      * 살아있는지 찔러본다.
      *
      * <p>주석 프레임({@code :})을 쓴다 — 이벤트가 아니므로 클라이언트가 렌더하지 않는다.
@@ -178,6 +171,12 @@ public class StreamController {
         }
     }
 
+    /**
+     * 한 건 보낸다.
+     *
+     * <p>쓰기 실패는 <b>연결이 끊겼다는 뜻</b>이다(브라우저 탭 닫힘 등). 정상적인 일이므로
+     * 에러로 시끄럽게 남기지 않되, 반드시 정리까지 이어지게 한다. 여기서 삼키면 구독이 그대로 남는다.
+     */
     private void send(SseEmitter emitter, BoardSnapshot snapshot,
                       AtomicBoolean closed, Runnable cleanup) {
         if (closed.get()) {

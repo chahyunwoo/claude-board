@@ -88,6 +88,13 @@ public final class Aggregator {
         }
 
         // 답변 대기가 최상단. 그 다음은 마지막 활동이 최근인 순.
+        //
+        // ⚠️ <b>이 정렬은 화면에 보이지 않는다.</b> 웹 화면은 프론트의 groupByState 가
+        // 상태별로 다시 정렬해 통째로 덮어쓴다 (frontend/src/lib/group.ts, #18 에서
+        // 그룹마다 다른 키를 쓰도록 나눴다). 여기를 고쳐도 화면은 안 바뀐다.
+        //
+        // 그럼에도 지우지 않는 이유: <b>--json CLI 출력에는 이것이 최종 순서</b>다.
+        // docs/05-검증.md 1번이 그 출력을 jq 로 그대로 훑어 상태 판별을 대조한다.
         projects.sort(Comparator
                 .comparingInt((Project p) -> p.current().state().sortOrder())
                 .thenComparing(p -> p.current().lastActivityAt(),

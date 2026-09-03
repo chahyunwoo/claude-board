@@ -71,5 +71,7 @@ export function useBoardStream(url = '/api/stream') {
     connected.value = false
   })
 
-  return { snapshot, connected, clientError, source }
+  // source 는 내보내지 않는다 — 아무도 안 쓰는데 내보내면
+  // "밖에서 조작해도 되는 것"으로 읽힌다. 정리는 onScopeDispose 가 한다.
+  return { snapshot, connected, clientError }
 }
