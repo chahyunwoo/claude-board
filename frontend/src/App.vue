@@ -20,10 +20,8 @@ const now = ref(Date.now())
 const ticker = setInterval(() => (now.value = Date.now()), 1000)
 onScopeDispose(() => clearInterval(ticker))
 
-/** `ended` 는 기본 숨김. 토글로만 보인다 (docs/03-프론트.md "정렬"). */
-const showEnded = ref(false)
 
-const groups = computed(() => groupByState(snapshot.value, showEnded.value, (s) => STATE_LABEL[s]))
+const groups = computed(() => groupByState(snapshot.value, (s) => STATE_LABEL[s]))
 const totals = computed(() => summarize(snapshot.value))
 const errors = computed(() => snapshot.value?.errors ?? [])
 
@@ -46,10 +44,6 @@ const empty = computed(() => snapshot.value !== null && snapshot.value.projects.
         <span class="dot">·</span>
         <span class="conn" :class="{ live: connected }">{{ connected ? '라이브' : '끊김' }}</span>
       </div>
-      <label class="toggle">
-        <input v-model="showEnded" type="checkbox" />
-        종료 표시
-      </label>
     </header>
 
     <!--
@@ -123,15 +117,6 @@ h1 {
 
 .conn.live {
   color: var(--state-working);
-}
-
-.toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  color: var(--fg-dim);
-  font-size: 0.8125rem;
-  cursor: pointer;
 }
 
 .errors {

@@ -9,11 +9,18 @@
  */
 
 /** 상태 5종. docs/01-데이터.md "최종 상태 5종". */
-export type SessionState = 'WAITING' | 'STALLED' | 'WORKING' | 'IDLE' | 'ENDED'
+/**
+ * 세션 상태 4종. 백엔드 `domain/SessionState.java` 와 1:1.
+ *
+ * **종료(`ENDED`)는 없다** (#17) — 이 보드는 살아있는 세션만 다루고,
+ * 백엔드가 pid 없는 항목을 걸러낸다. docs/00-개요.md "범위 밖".
+ */
+export type SessionState = 'WAITING' | 'STALLED' | 'WORKING' | 'IDLE'
 
 export interface Session {
   sessionId: string
-  pid: number | null
+  /** 항상 값이 있다 (#17) — 백엔드가 pid 없는 항목을 걸러낸다. */
+  pid: number
   state: SessionState
   title: string | null
   lastPrompt: string | null

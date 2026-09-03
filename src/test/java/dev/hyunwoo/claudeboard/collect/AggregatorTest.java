@@ -62,6 +62,53 @@ class AggregatorTest {
                 .formatted(ts, input, cacheRead);
     }
 
+    // ── pid 없는 항목 걸러내기 (#17) ────────────────────────────────────
+
+    /**
+     * <b>pid 없는 항목은 스냅샷에 들어오지 않는다.</b>
+     *
+     * <p>이 보드는 살아있는 세션만 다룬다 — 종료된 세션에는 줄 상태가 없다.
+     * 이 가드가 없으면 죽은 세션이 {@code WORKING} 으로 분류되어
+     * <b>화면이 "작업 중"이라고 거짓말을 한다.</b>
+     *
+     * <p>{@code StateResolver} 에서 {@code ENDED} 분기를 걷어냈으므로(#17)
+     * 이 필터가 그 역할을 대신한다. 필터를 지우면 이 테스트가 빨개져야 한다.
+     */
+    @Test
+    void pid_없는_항목은_스냅샷에서_제외된다() throws IOException {
+        writeTranscript("-p-live", "live-1", assistantWithUsage(100, 0, "2026-09-03T11:59:00Z"));
+        writeTranscript("-p-dead", "dead-1", assistantWithUsage(100, 0, "2026-09-03T11:59:00Z"));
+
+        // pid 0 = claude agents 가 pid 를 주지 않은 항목 (AgentsReader 의 asLong(0) 기본값)
+        BoardSnapshot snapshot = aggregator("""
+                [{"sessionId":"live-1","pid":1234,"cwd":"/p/live"},
+                 {"sessionId":"dead-1","pid":0,"cwd":"/p/dead"}]""", 1_000_000L)
+                .collect(NOW);
+
+        List<String> ids = snapshot.projects().stream()
+                .map(project -> project.current().sessionId())
+                .toList();
+        assertThat(ids).containsExactly("live-1").doesNotContain("dead-1");
+
+        // 조용히 버리지 않는다 — 삼키면 "세션이 없다"와 "걸러냈다"가 구별되지 않는다.
+        assertThat(snapshot.errors())
+                .anySatisfy(message -> assertThat(message).contains("dead-1").contains("pid"));
+    }
+
+    /** 걸러진 뒤에도 살아있는 세션의 pid 는 그대로 실려 나간다. */
+    @Test
+    void 살아있는_세션의_pid_는_그대로_나온다() throws IOException {
+        writeTranscript("-p-live", "live-1", assistantWithUsage(100, 0, "2026-09-03T11:59:00Z"));
+
+        BoardSnapshot snapshot = aggregator(
+                """
+                [{"sessionId":"live-1","pid":4242,"cwd":"/p/live"}]""", 1_000_000L)
+                .collect(NOW);
+
+        assertThat(snapshot.projects()).hasSize(1);
+        assertThat(snapshot.projects().get(0).current().pid()).isEqualTo(4242L);
+    }
+
     // ── 컨텍스트 상한 자동 상향 ─────────────────────────────────────────
 
     /**

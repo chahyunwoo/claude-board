@@ -28,7 +28,7 @@ class StateResolverTest {
 
     @Test
     void 마지막이_assistant_면_답변_대기다() {
-        SessionState state = resolver.resolve(RecordKind.ASSISTANT, minutesAgo(1), true, NOW);
+        SessionState state = resolver.resolve(RecordKind.ASSISTANT, minutesAgo(1), NOW);
 
         assertThat(state).isEqualTo(SessionState.WAITING);
     }
@@ -36,7 +36,7 @@ class StateResolverTest {
     @Test
     void 답변_대기는_오래_조용해도_유휴로_내려가지_않는다() {
         // 기다리는 중인 것은 시간이 지나도 변하지 않는다. 이게 이 도구의 최고 가치 상태다.
-        SessionState state = resolver.resolve(RecordKind.ASSISTANT, minutesAgo(60 * 24 * 27), true, NOW);
+        SessionState state = resolver.resolve(RecordKind.ASSISTANT, minutesAgo(60 * 24 * 27), NOW);
 
         assertThat(state).isEqualTo(SessionState.WAITING);
     }
@@ -51,7 +51,7 @@ class StateResolverTest {
      */
     @Test
     void 마지막이_tool_result_이고_최근이면_작업_중이지_답변_대기가_아니다() {
-        SessionState state = resolver.resolve(RecordKind.TOOL_RESULT, minutesAgo(1), true, NOW);
+        SessionState state = resolver.resolve(RecordKind.TOOL_RESULT, minutesAgo(1), NOW);
 
         assertThat(state)
                 .as("도구 결과를 사용자 입력으로 오인하면 상태가 정확히 뒤집힌다")
@@ -66,7 +66,7 @@ class StateResolverTest {
      */
     @Test
     void 마지막이_assistant_인데_tool_use_로_끝나면_작업_중이지_답변_대기가_아니다() {
-        SessionState state = resolver.resolve(RecordKind.ASSISTANT_TOOL_USE, minutesAgo(1), true, NOW);
+        SessionState state = resolver.resolve(RecordKind.ASSISTANT_TOOL_USE, minutesAgo(1), NOW);
 
         assertThat(state)
                 .as("도구 호출 후 결과를 기다리는 중이다 — 사용자를 기다리는 게 아니다")
@@ -76,14 +76,14 @@ class StateResolverTest {
 
     @Test
     void 도구_호출_뒤_오래_조용하면_멈춤_의심이다() {
-        SessionState state = resolver.resolve(RecordKind.ASSISTANT_TOOL_USE, minutesAgo(11), true, NOW);
+        SessionState state = resolver.resolve(RecordKind.ASSISTANT_TOOL_USE, minutesAgo(11), NOW);
 
         assertThat(state).isEqualTo(SessionState.STALLED);
     }
 
     @Test
     void 마지막이_tool_result_인데_임계를_넘으면_멈춤_의심이다() {
-        SessionState state = resolver.resolve(RecordKind.TOOL_RESULT, minutesAgo(11), true, NOW);
+        SessionState state = resolver.resolve(RecordKind.TOOL_RESULT, minutesAgo(11), NOW);
 
         assertThat(state).isEqualTo(SessionState.STALLED);
     }
@@ -91,7 +91,7 @@ class StateResolverTest {
     @Test
     void 멈춤_임계_직전에는_아직_작업_중이다() {
         // 경계: 10분 임계, 9분 경과 → 아직 WORKING
-        SessionState state = resolver.resolve(RecordKind.TOOL_RESULT, minutesAgo(9), true, NOW);
+        SessionState state = resolver.resolve(RecordKind.TOOL_RESULT, minutesAgo(9), NOW);
 
         assertThat(state).isEqualTo(SessionState.WORKING);
     }
@@ -100,7 +100,7 @@ class StateResolverTest {
 
     @Test
     void 마지막이_사용자_입력이면_작업_중이다() {
-        SessionState state = resolver.resolve(RecordKind.USER, minutesAgo(1), true, NOW);
+        SessionState state = resolver.resolve(RecordKind.USER, minutesAgo(1), NOW);
 
         assertThat(state).isEqualTo(SessionState.WORKING);
     }
@@ -113,21 +113,11 @@ class StateResolverTest {
      */
     @Test
     void 사용자_입력_뒤_오래_조용하면_멈춤이_아니라_유휴다() {
-        SessionState state = resolver.resolve(RecordKind.USER, minutesAgo(60 * 3), true, NOW);
+        SessionState state = resolver.resolve(RecordKind.USER, minutesAgo(60 * 3), NOW);
 
         assertThat(state)
                 .isEqualTo(SessionState.IDLE)
                 .isNotEqualTo(SessionState.STALLED);
-    }
-
-    // ── pid 유무 ───────────────────────────────────────────────────────
-
-    @Test
-    void pid_가_없으면_내용과_무관하게_종료다() {
-        assertThat(resolver.resolve(RecordKind.ASSISTANT, minutesAgo(1), false, NOW))
-                .isEqualTo(SessionState.ENDED);
-        assertThat(resolver.resolve(RecordKind.TOOL_RESULT, minutesAgo(1), false, NOW))
-                .isEqualTo(SessionState.ENDED);
     }
 
     // ── 경계·이상값 ────────────────────────────────────────────────────
@@ -135,7 +125,7 @@ class StateResolverTest {
     @Test
     void 대화_레코드를_못_찾았는데_살아있으면_작업_중으로_본다() {
         // 갓 시작했거나 상한에 걸린 부분 결과. pid 라는 근거가 있다.
-        SessionState state = resolver.resolve(RecordKind.NONE, null, true, NOW);
+        SessionState state = resolver.resolve(RecordKind.NONE, null, NOW);
 
         assertThat(state).isEqualTo(SessionState.WORKING);
     }
@@ -143,7 +133,7 @@ class StateResolverTest {
     @Test
     void 활동_시각을_모르면_임계_판정을_건너뛴다() {
         // 시각이 없다고 STALLED/IDLE 로 넘기면 안 된다 — 모르는 것과 오래된 것은 다르다.
-        assertThat(resolver.resolve(RecordKind.TOOL_RESULT, null, true, NOW))
+        assertThat(resolver.resolve(RecordKind.TOOL_RESULT, null, NOW))
                 .isEqualTo(SessionState.WORKING);
     }
 
@@ -151,7 +141,7 @@ class StateResolverTest {
     void 시계가_어긋나_미래_시각이어도_방금_활동한_것으로_본다() {
         Instant future = NOW.plus(Duration.ofMinutes(30));
 
-        assertThat(resolver.resolve(RecordKind.TOOL_RESULT, future, true, NOW))
+        assertThat(resolver.resolve(RecordKind.TOOL_RESULT, future, NOW))
                 .isEqualTo(SessionState.WORKING);
     }
 

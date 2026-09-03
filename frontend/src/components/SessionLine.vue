@@ -48,10 +48,6 @@ const untitled = computed(() => !props.session.title?.trim())
         <span class="dot">·</span>
         <span>{{ session.ordinal }}번째 세션</span>
       </template>
-      <template v-if="!session.pid">
-        <span class="dot">·</span>
-        <span>프로세스 없음</span>
-      </template>
     </div>
     <div v-if="prompt" class="prompt">
       <span class="arrow">↳</span>
