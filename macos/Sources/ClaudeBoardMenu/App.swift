@@ -72,7 +72,13 @@ private struct MenuContent: View {
                     }
                     .padding(.horizontal, 12)
                 }
-                .frame(maxHeight: 420)
+                // ⚠️ **상한만 주면 눌린다.** VStack 안의 ScrollView 는 남는 공간을
+                // 못 받으면 최소 높이로 쪼그라들어, 목록이 있는데도 한두 줄만 보인다
+                // (#37 에서 실측 — 12개가 있는데 화면에 거의 안 나왔다).
+                // 하한을 함께 줘서 **최소 10행**은 스크롤 없이 보이게 한다.
+                //
+                // 10행 = (행 16 + spacing 4) × 10 + 그룹 헤더·간격 여유 ≈ 260
+                .frame(minHeight: min(contentHeight, 260), maxHeight: 560)
             }
 
             Divider().padding(.vertical, 6)
@@ -81,6 +87,15 @@ private struct MenuContent: View {
         .frame(width: 340)
         .padding(.vertical, 8)
         // start() 는 앱 init 에서 이미 불렀다 — 여기서 또 부르면 구독이 두 개가 된다.
+    }
+
+    /// 목록이 실제로 차지하는 높이 추정.
+    ///
+    /// 항목이 적으면 하한을 그만큼만 준다 — 세션 2개인데 창이 260 이면
+    /// 아래가 휑하게 빈다. 상수는 폰트 크기(행 12pt·헤더 11pt)에서 나온 값이다.
+    private var contentHeight: CGFloat {
+        let rows = client.groups.reduce(0) { $0 + $1.projects.count }
+        return CGFloat(rows) * 20 + CGFloat(client.groups.count) * 29
     }
 
     /// 문제가 있으면 그것부터 말한다. **조용히 비어 있는 화면을 만들지 않는다** —
