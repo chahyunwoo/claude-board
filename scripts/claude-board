@@ -11,6 +11,11 @@
 # JDK 21 은 keg-only 라 PATH 에 없을 수 있다 (docs/06-개발환경.md).
 set -euo pipefail
 
+# ⚠️ GUI 앱(메뉴바 앱)이 이 스크립트를 부를 때는 **PATH 가 비어 있다.**
+# lsof·java 를 이름으로만 찾으면 못 찾아 "기동 실패" 로 오판한다 —
+# 실측으로 밟았다: 백엔드는 실제로 떴는데 스크립트가 실패를 냈다.
+export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:${PATH:-}"
+
 ROOT="${CLAUDE_BOARD_ROOT:-$HOME/Documents/projects/hyunwoo/claude-board}"
 JAR="$ROOT/build/libs/claude-board.jar"
 JAVA="/opt/homebrew/opt/openjdk@21/bin/java"
@@ -26,7 +31,7 @@ LOG="$LOG_DIR/claude-board.log"
 # ⚠️ `|| true` 가 필요하다. lsof 는 매치가 없으면 exit 1 을 내고,
 # set -e 가 그것으로 스크립트를 죽인다 — 서버가 안 떠 있을 때 status 조차 못 쓰게 된다.
 # 실측으로 밟았다.
-running_pid() { lsof -nP -iTCP:"$PORT" -sTCP:LISTEN -t 2>/dev/null | head -1 || true; }
+running_pid() { /usr/sbin/lsof -nP -iTCP:"$PORT" -sTCP:LISTEN -t 2>/dev/null | head -1 || true; }
 
 case "${1:-start}" in
   start)
