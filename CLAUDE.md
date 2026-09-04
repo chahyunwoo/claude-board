@@ -44,7 +44,12 @@ Homebrew `openjdk@21` 은 keg-only 라 PATH 에 안 잡힌다. 06-개발환경 �
 ```
 백엔드   Spring Boot 3 · Java 21 · Gradle · JUnit5
 프론트   Vue 3 · Vite · TypeScript
+메뉴바   Swift · SwiftUI · SwiftPM (macOS 13+)
 ```
+
+메뉴바 앱은 [docs/07-메뉴바앱.md](docs/07-메뉴바앱.md) 참고.
+⚠️ **CI 가 이 영역을 검사하지 않는다** — `macos/` 만 바뀌면 전 job 이 SKIPPED 다.
+초록을 검증으로 읽지 말 것. `swift build -c release` 를 직접 돌린다.
 
 `collect/` 는 Spring 에 의존하지 않는 순수 자바로 둔다.
 

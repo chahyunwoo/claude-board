@@ -24,13 +24,14 @@
 
   <key>RunAtLoad</key><true/>
 
-  <!-- ⚠️ KeepAlive 는 넣지 않는다 — 이 환경에서 작동하지 않는 것을 실측했다.
-       <true/> 로도, dict(SuccessfulExit=false, Crashed=true)로도 재시작되지 않았다
-       (SIGTERM·SIGKILL 둘 다, 25초 대기). launchd 는 keepalive 속성을 인식하는데
-       (properties = keepalive | runatload) last exit code = 143 을 정상 종료로 본다.
-       원인을 끝까지 파지 않고 접었다 — 조회 전용 도구라 잠시 안 떠 있어도 손해가 없고,
-       `claude-board start` 한 줄이면 다시 뜬다.
-       **안 되는 것을 켜두면 다음 사람이 "된다"고 오해한다.** -->
+  <!-- KeepAlive 는 넣지 않는다.
+       ⚠️ 정정(2026-09-04): 여기 원래 "이 환경에서 작동하지 않는다"고 적혀 있었는데
+       틀렸다. 같은 기계에서 KeepAlive:true 를 쓰는 caddy·concert-watch 가 잘 돈다.
+       관측된 사실은 이 잡의 last exit code = 143 (=128+15, SIGTERM)이라는 것뿐이고,
+       KeepAlive:true 는 launchd 가 정상 종료로 판단하면 되살리지 않는다 —
+       kill 로 죽여보는 검증이 정확히 그 조건을 만든다.
+       안 넣는 선택은 유지한다(조회 전용이라 손해가 없고 메뉴바 앱이 워치독을 겸한다).
+       다만 그 근거를 "launchd 가 고장났다"로 적지 않는다. docs/04-배포.md 참고. -->
 
   <!-- 로그는 셸 래퍼와 같은 곳으로 — 어느 쪽으로 띄웠든 한 곳만 보면 된다. -->
   <key>StandardOutPath</key><string>__LOG__</string>
