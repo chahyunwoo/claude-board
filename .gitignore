@@ -32,3 +32,8 @@ src/main/resources/static/
 
 # OS
 .DS_Store
+
+# Codex 용 지시 파일. 이 저장소는 Claude Code 를 쓰고 사용자는 Codex 를 쓰지 않는다.
+# 다른 프로젝트에서도 전부 로컬 파일로만 두는데(git 추적 안 함),
+# 이 저장소만 실수로 커밋된 적이 있다 (#33) — git add -A 에 다시 딸려가지 않게 막는다.
+AGENTS.md
