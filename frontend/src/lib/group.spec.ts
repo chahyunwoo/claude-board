@@ -49,7 +49,7 @@ describe('groupByState', () => {
       ]),
       label,
     )
-    expect(result.map((g) => g.state)).toEqual(['WAITING', 'STALLED', 'WORKING', 'IDLE'])
+    expect(result.map(g => g.state)).toEqual(['WAITING', 'STALLED', 'WORKING', 'IDLE'])
   })
 
   // 방치된 것이 위로 올라와야 한다 (docs/03-프론트.md "정렬").
@@ -62,7 +62,7 @@ describe('groupByState', () => {
       ]),
       label,
     )
-    expect(result[0].projects.map((p) => p.name)).toEqual(['오래됨', '중간', '최근'])
+    expect(result[0].projects.map(p => p.name)).toEqual(['오래됨', '중간', '최근'])
   })
 
   // ⭐ #18 의 회귀 테스트 — 이것이 이 파일의 핵심이다.
@@ -93,7 +93,7 @@ describe('groupByState', () => {
       label,
     )
 
-    const order = (r: ReturnType<typeof groupByState>) => r[0].projects.map((p) => p.name)
+    const order = (r: ReturnType<typeof groupByState>) => r[0].projects.map(p => p.name)
     // 시각이 어떻게 갱신되든 순서는 그대로여야 한다
     expect(order(first)).toEqual(['apple-pie', 'bubble-house', 'claude-board'])
     expect(order(second)).toEqual(order(first))
@@ -103,13 +103,9 @@ describe('groupByState', () => {
   // 여기서도 활동 시각은 흔들리는 키다.
   it('유휴 그룹도 활동 시각이 갱신돼도 순서가 안 바뀐다', () => {
     const order = (at: [string, string]) =>
-      groupByState(
-        snapshot([
-          project('zebra', 'IDLE', at[0]),
-          project('alpha', 'IDLE', at[1]),
-        ]),
-        label,
-      )[0].projects.map((p) => p.name)
+      groupByState(snapshot([project('zebra', 'IDLE', at[0]), project('alpha', 'IDLE', at[1])]), label)[0].projects.map(
+        p => p.name,
+      )
 
     expect(order(['2026-09-03T08:00:00Z', '2026-09-03T09:00:00Z'])).toEqual(['alpha', 'zebra'])
     // 시각 순위를 뒤집어도 순서는 유지된다
@@ -127,19 +123,16 @@ describe('groupByState', () => {
       label,
     )
     // 이름순이면 'aaa-최근' 이 먼저 오므로, 이 기대는 시각 정렬만 통과시킨다
-    expect(result[0].projects.map((p) => p.name)).toEqual(['zzz-오래됨', 'aaa-최근'])
+    expect(result[0].projects.map(p => p.name)).toEqual(['zzz-오래됨', 'aaa-최근'])
   })
 
   // 0 으로 취급하면 "가장 오래된 것"이 되어 정보 없는 세션이 맨 위를 차지한다.
   it('활동 시각이 없는 것은 맨 뒤로', () => {
     const result = groupByState(
-      snapshot([
-        project('시각없음', 'WAITING', null),
-        project('오래됨', 'WAITING', '2026-08-07T10:00:00Z'),
-      ]),
+      snapshot([project('시각없음', 'WAITING', null), project('오래됨', 'WAITING', '2026-08-07T10:00:00Z')]),
       label,
     )
-    expect(result[0].projects.map((p) => p.name)).toEqual(['오래됨', '시각없음'])
+    expect(result[0].projects.map(p => p.name)).toEqual(['오래됨', '시각없음'])
   })
 
   // 비어 있는 머리글이 남으면 실제 대기 건을 아래로 밀어낸다.
@@ -165,7 +158,7 @@ describe('groupByState', () => {
       project('오래됨', 'WAITING', '2026-08-07T10:00:00Z'),
     ]
     groupByState(snapshot(projects), label)
-    expect(projects.map((p) => p.name)).toEqual(['최근', '오래됨'])
+    expect(projects.map(p => p.name)).toEqual(['최근', '오래됨'])
   })
 })
 

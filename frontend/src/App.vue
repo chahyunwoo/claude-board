@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onScopeDispose, ref } from 'vue'
-import ProjectRow from './components/ProjectRow.vue'
-import { STATE_LABEL, clockOf } from '@/lib/format'
+import { clockOf, STATE_LABEL } from '@/lib/format'
 import { groupByState, summarize } from '@/lib/group'
 import { useBoardStream } from '@/lib/useBoardStream'
+import ProjectRow from './components/ProjectRow.vue'
 
 /**
  * 단일 화면. 라우팅 없음, 스크롤만 (docs/03-프론트.md "화면").
@@ -20,8 +20,7 @@ const now = ref(Date.now())
 const ticker = setInterval(() => (now.value = Date.now()), 1000)
 onScopeDispose(() => clearInterval(ticker))
 
-
-const groups = computed(() => groupByState(snapshot.value, (s) => STATE_LABEL[s]))
+const groups = computed(() => groupByState(snapshot.value, s => STATE_LABEL[s]))
 const totals = computed(() => summarize(snapshot.value))
 const errors = computed(() => snapshot.value?.errors ?? [])
 
@@ -63,12 +62,7 @@ const empty = computed(() => snapshot.value !== null && snapshot.value.projects.
         {{ group.label }} <span class="n">({{ group.projects.length }})</span>
       </h2>
       <div class="rows">
-        <ProjectRow
-          v-for="project in group.projects"
-          :key="project.cwd"
-          :project="project"
-          :now="now"
-        />
+        <ProjectRow v-for="project in group.projects" :key="project.cwd" :project="project" :now="now" />
       </div>
     </section>
   </div>

@@ -1,7 +1,7 @@
-import { effectScope } from 'vue'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useBoardStream } from './useBoardStream'
+import { effectScope } from 'vue'
 import type { BoardSnapshot } from './types'
+import { useBoardStream } from './useBoardStream'
 
 /**
  * SSE 구독 검증.
@@ -42,10 +42,11 @@ class FakeEventSource {
 
   /** 서버가 `event: <name>` 으로 보낸 것을 흉내낸다. */
   emit(name: string, data?: string) {
-    const event = data === undefined
-      ? new Event(name)
-      : Object.assign(new Event(name), { data })
-    this.listeners.get(name)?.forEach((handler) => handler(event))
+    const event = data === undefined ? new Event(name) : Object.assign(new Event(name), { data })
+    // 블록으로 감싼다 — 축약형은 handler 의 반환값이 forEach 로 새어 나간다.
+    this.listeners.get(name)?.forEach(handler => {
+      handler(event)
+    })
     // 이름 없는 이벤트만 onmessage 로 간다. 'snapshot' 은 여기 해당하지 않는다.
     if (name === 'message') {
       this.onmessage?.(event as MessageEvent<string>)
@@ -117,7 +118,7 @@ describe('useBoardStream', () => {
    * 구현이 `onmessage` 를 쓰면 **아무것도 오지 않는다**. 이 가짜는 그 동작을 그대로
    * 흉내내므로, `addEventListener('snapshot', …)` 이 아니면 여기서 갈린다.
    */
-  it("event: snapshot 을 받는다 (onmessage 로 짜면 여기서 빨개진다)", () => {
+  it('event: snapshot 을 받는다 (onmessage 로 짜면 여기서 빨개진다)', () => {
     const { result, stop } = run(() => useBoardStream())
     expect(result.snapshot.value).toBeNull()
 
@@ -162,7 +163,7 @@ describe('useBoardStream', () => {
 
     es.emit('snapshot', payload)
     const first = result.snapshot.value!
-    es.emit('snapshot', payload)  // 재연결 직후 서버가 캐시 1건을 다시 보낸다
+    es.emit('snapshot', payload) // 재연결 직후 서버가 캐시 1건을 다시 보낸다
 
     expect(result.snapshot.value!.projects).toHaveLength(4)
     expect(result.snapshot.value!.generatedAt).toBe(first.generatedAt)

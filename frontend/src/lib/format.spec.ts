@@ -29,8 +29,7 @@ function session(overrides: Partial<Session> = {}): Session {
 
 describe('titleOf', () => {
   it('제목이 있으면 그대로 낸다', () => {
-    expect(titleOf(session({ title: '알림봇 상영관 등급 필터링 검증' })))
-      .toBe('알림봇 상영관 등급 필터링 검증')
+    expect(titleOf(session({ title: '알림봇 상영관 등급 필터링 검증' }))).toBe('알림봇 상영관 등급 필터링 검증')
   })
 
   // 실측: 16개 중 5개가 이 상태다. 렌더가 죽으면 화면 전체가 날아간다.
@@ -45,8 +44,7 @@ describe('titleOf', () => {
 
 describe('branchOf', () => {
   it('긴 브랜치명도 자르지 않는다 — 자르는 것은 CSS 의 일이다', () => {
-    expect(branchOf(session({ branch: 'worktree-fix-imax-scan-throttle' })))
-      .toBe('worktree-fix-imax-scan-throttle')
+    expect(branchOf(session({ branch: 'worktree-fix-imax-scan-throttle' }))).toBe('worktree-fix-imax-scan-throttle')
   })
 
   // 실측: STALLED 세션 하나가 브랜치 없이 왔다.
@@ -65,9 +63,9 @@ describe('contextOf — 절대값·상한·% 셋을 모두 낸다', () => {
     const text = contextOf(session())
     expect(text).toBe('544K / 1.0M · 54%')
     // 셋이 각각 실제로 들어 있는지 따로 본다 — 형식만 맞고 값이 빠지는 것을 막는다.
-    expect(text).toContain('544K')  // 절대값
-    expect(text).toContain('1.0M')  // 상한
-    expect(text).toContain('54%')   // 비율
+    expect(text).toContain('544K') // 절대값
+    expect(text).toContain('1.0M') // 상한
+    expect(text).toContain('54%') // 비율
   })
 
   it('상한을 모르면 절대값만이라도 낸다', () => {
@@ -181,10 +179,8 @@ describe('contextLevelOf', () => {
 
   // 판단 근거가 없으면 경고하지 않는다 — 모르는 것을 위험으로 표시하면 거짓 경보가 된다.
   it('정보가 없으면 normal', () => {
-    expect(contextLevelOf(session({ contextRatio: null, contextTokens: null, contextLimit: null })))
-      .toBe('normal')
-    expect(contextLevelOf(session({ contextRatio: null, contextTokens: 500_000, contextLimit: 0 })))
-      .toBe('normal')
+    expect(contextLevelOf(session({ contextRatio: null, contextTokens: null, contextLimit: null }))).toBe('normal')
+    expect(contextLevelOf(session({ contextRatio: null, contextTokens: 500_000, contextLimit: 0 }))).toBe('normal')
   })
 
   // 관측값이 상한을 넘을 수 있다 — 기록의 모델명이 claude-opus-5 로만 남아
@@ -208,16 +204,13 @@ describe('promptOf — 태그 처리', () => {
   const p = (lastPrompt: string) => promptOf(session({ lastPrompt }))
 
   it('시스템 태그의 꺾쇠를 벗기고 내용을 남긴다', () => {
-    expect(p('<task-notification><summary>모니터 이벤트</summary>'))
-      .toBe('모니터 이벤트')
+    expect(p('<task-notification><summary>모니터 이벤트</summary>')).toBe('모니터 이벤트')
   })
 
   // #15 의 우려가 현실이 되지 않는지 — 실측 1위가 <td> 19건이었다.
   it('사용자가 붙여넣은 HTML 의 내용도 살아남는다', () => {
-    expect(p('<table><tr><td>이름</td><td>값</td></tr></table> 이 표 좀 봐줘'))
-      .toBe('이름 값 이 표 좀 봐줘')
-    expect(p('이건 그냥 <strong>강조</strong>가 든 문장이다'))
-      .toBe('이건 그냥 강조 가 든 문장이다')
+    expect(p('<table><tr><td>이름</td><td>값</td></tr></table> 이 표 좀 봐줘')).toBe('이름 값 이 표 좀 봐줘')
+    expect(p('이건 그냥 <strong>강조</strong>가 든 문장이다')).toBe('이건 그냥 강조 가 든 문장이다')
   })
 
   it('태그 이름만 있고 내용이 없으면 빈 결과가 아니라 null', () => {
@@ -237,10 +230,8 @@ describe('promptOf — 태그 처리', () => {
 
   // 실측: 사용자가 붙여넣은 파일 내용에서 HTML 주석이 통째로 사라졌다 (2건).
   it('HTML 주석의 내용은 남긴다', () => {
-    expect(p('<!-- 이 파일은 읽기 전용입니다 --> 이거 고쳐줘'))
-      .toContain('이 파일은 읽기 전용입니다')
-    expect(p('<!-- 이 파일은 읽기 전용입니다 --> 이거 고쳐줘'))
-      .toContain('이거 고쳐줘')
+    expect(p('<!-- 이 파일은 읽기 전용입니다 --> 이거 고쳐줘')).toContain('이 파일은 읽기 전용입니다')
+    expect(p('<!-- 이 파일은 읽기 전용입니다 --> 이거 고쳐줘')).toContain('이거 고쳐줘')
   })
 
   // 속성이 붙은 태그도 지운다 — 안 지우면 <html lang="en"> 같은 게 그대로 보인다.

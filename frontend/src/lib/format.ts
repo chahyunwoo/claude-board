@@ -50,9 +50,8 @@ export function contextOf(session: Session): string | null {
     // 상한을 모르면 % 도 못 낸다. 절대값만으로도 판단은 된다.
     return absolute
   }
-  const percent = contextRatio != null
-    ? Math.round(contextRatio * 100)
-    : Math.round((contextTokens / contextLimit) * 100)
+  const percent =
+    contextRatio != null ? Math.round(contextRatio * 100) : Math.round((contextTokens / contextLimit) * 100)
   return `${absolute} / ${compactTokens(contextLimit)} · ${percent}%`
 }
 
@@ -75,11 +74,12 @@ export type ContextLevel = 'normal' | 'warn' | 'danger'
 
 export function contextLevelOf(session: Session): ContextLevel {
   const { contextTokens, contextLimit, contextRatio } = session
-  const ratio = contextRatio != null
-    ? contextRatio
-    : contextTokens != null && contextLimit != null && contextLimit > 0
-      ? contextTokens / contextLimit
-      : null
+  const ratio =
+    contextRatio != null
+      ? contextRatio
+      : contextTokens != null && contextLimit != null && contextLimit > 0
+        ? contextTokens / contextLimit
+        : null
   if (ratio == null) {
     return 'normal'
   }

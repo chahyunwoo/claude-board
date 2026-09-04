@@ -43,7 +43,7 @@ export function useBoardStream(url = '/api/stream') {
     connected.value = true
   })
 
-  source.addEventListener('snapshot', (event) => {
+  source.addEventListener('snapshot', event => {
     try {
       // 통째로 교체한다. 병합하지 않는다 — 사라진 세션이 화면에 남는다.
       snapshot.value = JSON.parse((event as MessageEvent<string>).data) as BoardSnapshot

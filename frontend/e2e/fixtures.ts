@@ -36,12 +36,7 @@ export function snapshot(overrides: Partial<BoardSnapshot> = {}): BoardSnapshot 
   }
 }
 
-export function project(
-  name: string,
-  state: SessionState,
-  current: Partial<Session> = {},
-  others: Session[] = [],
-) {
+export function project(name: string, state: SessionState, current: Partial<Session> = {}, others: Session[] = []) {
   return {
     cwd: `/Users/me/projects/${name}`,
     name,
