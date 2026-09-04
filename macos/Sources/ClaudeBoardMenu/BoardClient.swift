@@ -40,15 +40,24 @@ final class BoardClient: ObservableObject {
         }
     }
 
+    /// 상태 그룹 하나. **튜플이 아니라 구조체로 둔다** —
+    /// SwiftUI 의 ForEach 는 Identifiable 을 요구하고, 튜플 배열에 키패스 id 를 주면
+    /// 조용히 안 그려지는 경우가 있다.
+    struct Group: Identifiable {
+        let state: SessionState
+        let projects: [Project]
+        var id: String { state.rawValue }
+    }
+
     /// 상태 그룹. 답변 대기 → 멈춤 의심 → 작업 중 → 유휴 (docs/03-프론트.md "정렬").
-    var groups: [(state: SessionState, projects: [Project])] {
+    var groups: [Group] {
         guard let snapshot else { return [] }
         // order 순으로 돈다 — CaseIterable 이라 상태가 늘어도 여기를 안 고쳐도 된다.
         let ordered = SessionState.allCases.sorted { $0.order < $1.order }
-        return ordered.compactMap { (state: SessionState) -> (SessionState, [Project])? in
+        return ordered.compactMap { (state: SessionState) -> Group? in
             let ps = snapshot.projects.filter { $0.current.state == state }
             guard !ps.isEmpty else { return nil }
-            return (state, Self.sort(ps, for: state))
+            return Group(state: state, projects: Self.sort(ps, for: state))
         }
     }
 

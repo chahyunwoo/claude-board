@@ -66,8 +66,8 @@ private struct MenuContent: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 10) {
-                        ForEach(client.groups, id: \.state) { group in
-                            Group(state: group.state, projects: group.projects)
+                        ForEach(client.groups) { group in
+                            StateGroup(state: group.state, projects: group.projects)
                         }
                     }
                     .padding(.horizontal, 12)
@@ -137,7 +137,7 @@ private struct Problem: View {
     }
 }
 
-private struct Group: View {
+private struct StateGroup: View {
     let state: SessionState
     let projects: [Project]
 
