@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>local.claude-board</string>
+
+  <!-- 절대 경로여야 한다. launchd 는 PATH 를 물려주지 않고,
+       JDK 21 은 keg-only 라 /usr/bin/java 로는 안 잡힌다 (docs/06-개발환경.md). -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/opt/homebrew/opt/openjdk@21/bin/java</string>
+    <string>-jar</string>
+    <string>__JAR__</string>
+  </array>
+
+  <!-- ⚠️ launchd 는 PATH 를 물려주지 않는다. claude CLI 를 못 찾으면
+       세션 목록이 비어 화면이 텅 빈다 — 실측으로 밟았고, errors 가 알려줬다:
+         "agents 목록을 읽지 못함: Cannot run program \"claude\""
+       nvm 경로가 바뀌면 여기도 고쳐야 한다 (설치 스크립트가 자동으로 채운다). -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>__PATH__</string>
+  </dict>
+
+  <key>RunAtLoad</key><true/>
+
+  <!-- ⚠️ KeepAlive 는 넣지 않는다 — 이 환경에서 작동하지 않는 것을 실측했다.
+       <true/> 로도, dict(SuccessfulExit=false, Crashed=true)로도 재시작되지 않았다
+       (SIGTERM·SIGKILL 둘 다, 25초 대기). launchd 는 keepalive 속성을 인식하는데
+       (properties = keepalive | runatload) last exit code = 143 을 정상 종료로 본다.
+       원인을 끝까지 파지 않고 접었다 — 조회 전용 도구라 잠시 안 떠 있어도 손해가 없고,
+       `claude-board start` 한 줄이면 다시 뜬다.
+       **안 되는 것을 켜두면 다음 사람이 "된다"고 오해한다.** -->
+
+  <!-- 로그는 셸 래퍼와 같은 곳으로 — 어느 쪽으로 띄웠든 한 곳만 보면 된다. -->
+  <key>StandardOutPath</key><string>__LOG__</string>
+  <key>StandardErrorPath</key><string>__LOG__</string>
+
+  <!-- 데이터는 이 기계를 떠나지 않는다. 세션 기록을 읽으려면 홈이 필요하다. -->
+  <key>WorkingDirectory</key><string>__ROOT__</string>
+</dict>
+</plist>
