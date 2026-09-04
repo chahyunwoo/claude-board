@@ -23,10 +23,18 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       hooks: ${{ steps.filter.outputs.hooks }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: dorny/paths-filter@v3
+      - uses: actions/checkout@v7
+      - uses: dorny/paths-filter@v4
         id: filter
         with:
+          # 워크플로 자체가 바뀌면 **모든 잡을 돌린다** (#25).
+          #
+          # 실측: 액션 버전을 올리는 PR 에서 backend·frontend·e2e 가 전부 스킵되어
+          # **갱신한 액션 6개 중 4개가 한 번도 실행되지 않은 채 CI 가 초록이었다.**
+          # setup-java·setup-node·upload-artifact·setup-gradle 이 그것들이다 —
+          # 그대로 머지했다면 다음 PR 에서 터졌을 것이다.
+          #
+          # CI 를 고치는 변경이 CI 로 검증되지 않는 구멍이었다.
           filters: |
             backend:
               - 'src/**'
@@ -34,10 +42,13 @@ jobs:
               - 'settings.gradle.kts'
               - 'gradle/**'
               - 'gradlew'
+              - '.github/workflows/**'
             frontend:
               - 'frontend/**'
+              - '.github/workflows/**'
             hooks:
               - '.githooks/**'
+              - '.github/workflows/**'
 
   # 훅이 **실제로 작동하는지** 검사한다.
   #
@@ -49,7 +60,7 @@ jobs:
     if: needs.changes.outputs.hooks == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: 훅이 잔재를 실제로 잡는가
         run: |
@@ -103,16 +114,16 @@ jobs:
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: JDK 21 준비
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: '21'
           distribution: temurin
 
       - name: Gradle 준비
-        uses: gradle/actions/setup-gradle@v4
+        uses: gradle/actions/setup-gradle@v6
 
       - name: 빌드·테스트
         run: ./gradlew build --no-daemon
@@ -121,7 +132,7 @@ jobs:
 
       - name: 테스트 리포트 보관
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-test-report
           path: build/reports/tests/test
@@ -157,9 +168,9 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -184,15 +195,15 @@ jobs:
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: JDK 21 준비
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v6
         with:
           java-version: '21'
           distribution: temurin
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: npm
@@ -212,7 +223,7 @@ jobs:
 
       - name: 실패 시 리포트 보관
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-report
           path: frontend/playwright-report
