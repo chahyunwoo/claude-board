@@ -93,35 +93,28 @@ export async function installFakeStream(page: Page) {
 
 /** 스냅샷 한 건을 화면에 밀어넣는다. */
 export async function push(page: Page, data: BoardSnapshot) {
-  await page.evaluate((payload) => {
-    ;(window as unknown as { __stream: { emit(d: unknown, n?: string): void } })
-      .__stream.emit(payload)
+  await page.evaluate(payload => {
+    ;(window as unknown as { __stream: { emit(d: unknown, n?: string): void } }).__stream.emit(payload)
   }, data as unknown)
 }
 
 /** 이름 없는 `message` 로 보낸다 — 서버는 이렇게 보내지 않는다. */
 export async function pushAsMessage(page: Page, data: BoardSnapshot) {
-  await page.evaluate((payload) => {
-    ;(window as unknown as { __stream: { emit(d: unknown, n?: string): void } })
-      .__stream.emit(payload, 'message')
+  await page.evaluate(payload => {
+    ;(window as unknown as { __stream: { emit(d: unknown, n?: string): void } }).__stream.emit(payload, 'message')
   }, data as unknown)
 }
 
 export async function drop(page: Page) {
-  await page.evaluate(() =>
-    (window as unknown as { __stream: { drop(): void } }).__stream.drop(),
-  )
+  await page.evaluate(() => (window as unknown as { __stream: { drop(): void } }).__stream.drop())
 }
 
 export async function reopen(page: Page) {
-  await page.evaluate(() =>
-    (window as unknown as { __stream: { reopen(): void } }).__stream.reopen(),
-  )
+  await page.evaluate(() => (window as unknown as { __stream: { reopen(): void } }).__stream.reopen())
 }
 
 export async function connectionCount(page: Page): Promise<number> {
   return page.evaluate(() =>
-    (window as unknown as { __stream: { connectionCount(): number } })
-      .__stream.connectionCount(),
+    (window as unknown as { __stream: { connectionCount(): number } }).__stream.connectionCount(),
   )
 }

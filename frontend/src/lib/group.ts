@@ -79,18 +79,13 @@ function timeOf(session: Session): number {
  * 여기 오는 것은 살아있는 세션뿐이다. 이전에는 `showEnded` 로 토글했지만
  * 그 상태가 실전에서 오지 않아 **토글이 항상 아무것도 하지 않았다.**
  */
-export function groupByState(
-  snapshot: BoardSnapshot | null,
-  label: (state: SessionState) => string,
-): StateGroup[] {
+export function groupByState(snapshot: BoardSnapshot | null, label: (state: SessionState) => string): StateGroup[] {
   if (!snapshot) {
     return []
   }
   const groups: StateGroup[] = []
   for (const state of STATE_ORDER) {
-    const projects = snapshot.projects
-      .filter((project) => project.current.state === state)
-      .sort(comparatorFor(state))
+    const projects = snapshot.projects.filter(project => project.current.state === state).sort(comparatorFor(state))
     if (projects.length > 0) {
       groups.push({ state, label: label(state), projects })
     }
@@ -106,9 +101,6 @@ export function summarize(snapshot: BoardSnapshot | null): {
   if (!snapshot) {
     return { projects: 0, sessions: 0 }
   }
-  const sessions = snapshot.projects.reduce(
-    (total, project) => total + 1 + project.others.length,
-    0,
-  )
+  const sessions = snapshot.projects.reduce((total, project) => total + 1 + project.others.length, 0)
   return { projects: snapshot.projects.length, sessions }
 }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import SessionLine from './SessionLine.vue'
 import type { Project } from '@/lib/types'
+import SessionLine from './SessionLine.vue'
 
 /**
  * 프로젝트 한 건 — `current` 한 줄과, 접힌 `others`.
@@ -48,18 +48,11 @@ function toggle() {
       @keydown.space.prevent="toggle"
     >
       <SessionLine :session="project.current" :name="project.name" :now="now" />
-      <div v-if="hasOthers" class="others-hint">
-        {{ expanded ? '▾' : '▸' }} 세션 {{ project.others.length }}개 더
-      </div>
+      <div v-if="hasOthers" class="others-hint">{{ expanded ? '▾' : '▸' }} 세션 {{ project.others.length }}개 더</div>
     </div>
 
     <div v-if="expanded" class="others">
-      <SessionLine
-        v-for="session in project.others"
-        :key="session.sessionId"
-        :session="session"
-        :now="now"
-      />
+      <SessionLine v-for="session in project.others" :key="session.sessionId" :session="session" :now="now" />
     </div>
 
     <div class="foot">

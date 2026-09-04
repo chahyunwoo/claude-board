@@ -1,14 +1,7 @@
 import type { Page } from '@playwright/test'
 import { expect, test } from '@playwright/test'
 import { project, session, snapshot } from './fixtures'
-import {
-  connectionCount,
-  drop,
-  installFakeStream,
-  push,
-  pushAsMessage,
-  reopen,
-} from './sse'
+import { connectionCount, drop, installFakeStream, push, pushAsMessage, reopen } from './sse'
 
 /**
  * docs/05-검증.md 5번 — 프론트 검증 항목을 그대로 옮긴 것이다.
@@ -144,19 +137,11 @@ test('상태 그룹이 답변 대기 → 멈춤 의심 → 작업 중 순으로 
   await push(
     page,
     snapshot({
-      projects: [
-        project('c', 'WORKING'),
-        project('a', 'STALLED'),
-        project('b', 'WAITING'),
-      ],
+      projects: [project('c', 'WORKING'), project('a', 'STALLED'), project('b', 'WAITING')],
     }),
   )
 
-  await expect(page.getByRole('heading', { level: 2 })).toHaveText([
-    /답변 대기/,
-    /멈춤 의심/,
-    /작업 중/,
-  ])
+  await expect(page.getByRole('heading', { level: 2 })).toHaveText([/답변 대기/, /멈춤 의심/, /작업 중/])
 })
 
 /*
@@ -225,10 +210,7 @@ test('사라진 세션은 화면에서도 사라진다 — 병합하지 않는�
 })
 
 test('errors 가 화면에 나온다 — "없다"와 "못 읽었다"는 다르다', async ({ page }) => {
-  await push(
-    page,
-    snapshot({ projects: [], errors: ['첫 수집이 아직 끝나지 않았습니다'] }),
-  )
+  await push(page, snapshot({ projects: [], errors: ['첫 수집이 아직 끝나지 않았습니다'] }))
   await expect(page.getByText('첫 수집이 아직 끝나지 않았습니다')).toBeVisible()
 })
 

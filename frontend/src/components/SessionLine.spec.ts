@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import SessionLine from './SessionLine.vue'
 import type { Session } from '@/lib/types'
+import SessionLine from './SessionLine.vue'
 
 /**
  * "제목 없는 세션이 **렌더되는가**" (docs/05-검증.md 5번) 는 순수 함수 테스트로는
