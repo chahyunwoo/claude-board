@@ -1,0 +1,69 @@
+#!/bin/bash
+#
+# claude-board 실행 래퍼. ~/.local/bin/claude-board 로 심볼릭 링크해서 쓴다.
+#
+#   claude-board          띄운다 (이미 떠 있으면 알려주고 끝)
+#   claude-board restart  다시 띄운다 (jar 를 새로 빌드한 뒤 쓴다)
+#   claude-board stop     내린다
+#   claude-board status   상태
+#   claude-board log      로그 따라가기
+#
+# JDK 21 은 keg-only 라 PATH 에 없을 수 있다 (docs/06-개발환경.md).
+set -euo pipefail
+
+ROOT="${CLAUDE_BOARD_ROOT:-$HOME/Documents/projects/hyunwoo/claude-board}"
+JAR="$ROOT/build/libs/claude-board.jar"
+JAVA="/opt/homebrew/opt/openjdk@21/bin/java"
+PORT=7777
+LOG_DIR="$HOME/Library/Logs/claude-board"
+LOG="$LOG_DIR/claude-board.log"
+
+[ -x "$JAVA" ] || JAVA="$(command -v java || true)"
+[ -n "$JAVA" ] || { echo "✗ JDK 21 을 찾지 못했다 — brew install openjdk@21" >&2; exit 1; }
+
+# 포트로 센다. 프로세스 이름은 'java' 라 grep 으로 못 가른다 (docs/05-검증.md 4번).
+#
+# ⚠️ `|| true` 가 필요하다. lsof 는 매치가 없으면 exit 1 을 내고,
+# set -e 가 그것으로 스크립트를 죽인다 — 서버가 안 떠 있을 때 status 조차 못 쓰게 된다.
+# 실측으로 밟았다.
+running_pid() { lsof -nP -iTCP:"$PORT" -sTCP:LISTEN -t 2>/dev/null | head -1 || true; }
+
+case "${1:-start}" in
+  start)
+    pid="$(running_pid)"
+    if [ -n "$pid" ]; then
+      echo "이미 떠 있다 (pid $pid) — http://127.0.0.1:$PORT"
+      exit 0
+    fi
+    [ -f "$JAR" ] || { echo "✗ jar 이 없다 — scripts/build.sh 를 먼저 돌려라" >&2; exit 1; }
+    mkdir -p "$LOG_DIR"
+    nohup "$JAVA" -jar "$JAR" >> "$LOG" 2>&1 &
+    sleep 3
+    pid="$(running_pid)"
+    [ -n "$pid" ] || { echo "✗ 기동 실패 — $LOG 를 봐라" >&2; tail -5 "$LOG" >&2; exit 1; }
+    echo "✓ 떴다 (pid $pid) — http://127.0.0.1:$PORT"
+    ;;
+  stop)
+    pid="$(running_pid)"
+    [ -n "$pid" ] || { echo "떠 있지 않다"; exit 0; }
+    kill "$pid" && echo "✓ 내렸다 (pid $pid)"
+    ;;
+  restart)
+    "$0" stop
+    sleep 2
+    "$0" start
+    ;;
+  status)
+    pid="$(running_pid)"
+    if [ -n "$pid" ]; then
+      echo "떠 있다 (pid $pid)"
+      # 바인딩이 127.0.0.1 인지 함께 보인다 — 이 도구의 절대 원칙이다
+      lsof -nP -iTCP:"$PORT" -sTCP:LISTEN | tail -n +2
+      echo "jar: $(date -r "$JAR" '+%Y-%m-%d %H:%M')  (이보다 최근에 고쳤다면 restart)"
+    else
+      echo "떠 있지 않다"
+    fi
+    ;;
+  log)  tail -f "$LOG" ;;
+  *)    echo "usage: claude-board [start|stop|restart|status|log]" >&2; exit 1 ;;
+esac
