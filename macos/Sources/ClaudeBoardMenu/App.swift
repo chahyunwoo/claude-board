@@ -67,7 +67,7 @@ private struct MenuContent: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 10) {
                         ForEach(client.groups) { group in
-                            StateGroup(state: group.state, projects: group.projects)
+                            StateGroup(state: group.state, projects: group.projects, client: client)
                         }
                     }
                     .padding(.horizontal, 12)
@@ -81,10 +81,15 @@ private struct MenuContent: View {
                 .frame(minHeight: min(contentHeight, 260), maxHeight: 560)
             }
 
+            if !client.selected.isEmpty {
+                Divider().padding(.vertical, 6)
+                SelectionBar(client: client)
+            }
+
             Divider().padding(.vertical, 6)
             footer
         }
-        .frame(width: 340)
+        .frame(width: 380)
         .padding(.vertical, 8)
         // start() 는 앱 init 에서 이미 불렀다 — 여기서 또 부르면 구독이 두 개가 된다.
     }
@@ -142,6 +147,56 @@ private struct MenuContent: View {
     }
 }
 
+/// 선택한 세션들을 죽이는 명령을 **클립보드에 넣어준다.**
+///
+/// ⚠️ **앱이 직접 죽이지 않는다** (docs/00-개요.md "조회 전용").
+/// 복사는 조회이고, 실제로 죽는 것은 터미널에서 사용자가 붙여넣고 엔터를 칠 때다 —
+/// 그 사이에 눈으로 확인하는 단계가 있어서 "잘못 눌러 작업이 날아가는" 경로가 아니다.
+private struct SelectionBar: View {
+    @ObservedObject var client: BoardClient
+    @State private var copied = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text("\(client.selectedPids.count)개 선택")
+                    .font(.system(size: 11, weight: .semibold))
+                Spacer()
+                Button("해제") { client.clearSelection() }
+                    .buttonStyle(.link).font(.system(size: 11))
+            }
+
+            if let command = client.killCommand {
+                // 복사하기 전에 무엇이 복사되는지 보여준다 —
+                // 보이지 않는 것을 클립보드에 넣지 않는다.
+                Text(command)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .textSelection(.enabled)
+
+                Button(copied ? "✓ 복사됨 — 터미널에 붙여넣으세요" : "kill 명령 복사") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(command, forType: .string)
+                    copied = true
+                }
+                .font(.system(size: 11))
+            }
+
+            // 선택해둔 사이에 끝난 세션이 있으면 조용히 빼지 않고 말한다.
+            if client.staleSelectionCount > 0 {
+                Text("\(client.staleSelectionCount)개는 이미 끝나서 제외했습니다")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.orange)
+            }
+        }
+        .padding(.horizontal, 12)
+        // 선택이 바뀌면 "복사됨" 표시를 되돌린다 — 예전 복사 결과를 새 선택에
+        // 붙여 보여주면 안 한 복사를 했다고 믿게 된다.
+        .onChange(of: client.selected) { _ in copied = false }
+    }
+}
+
 private struct Problem: View {
     let message: String
     var body: some View {
@@ -155,6 +210,7 @@ private struct Problem: View {
 private struct StateGroup: View {
     let state: SessionState
     let projects: [Project]
+    @ObservedObject var client: BoardClient
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -162,7 +218,7 @@ private struct StateGroup: View {
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(color)
             ForEach(projects) { project in
-                Row(project: project)
+                Row(project: project, client: client)
             }
         }
     }
@@ -180,28 +236,96 @@ private struct StateGroup: View {
 
 private struct Row: View {
     let project: Project
+    @ObservedObject var client: BoardClient
+
+    private var session: Session { project.current }
+    private var isExpanded: Bool { client.expanded.contains(session.sessionId) }
+    private var isSelected: Bool { client.selected.contains(session.sessionId) }
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            header
+            if isExpanded { detail }
+        }
+    }
+
+    private var header: some View {
         HStack(spacing: 6) {
+            // 체크박스는 **행 펼침과 따로 논다** — 선택하려다 펼쳐지면 성가시다.
+            Image(systemName: isSelected ? "checkmark.square.fill" : "square")
+                .font(.system(size: 11))
+                .foregroundStyle(isSelected ? Color.accentColor : Color.secondary.opacity(0.5))
+                .onTapGesture { client.toggleSelected(session.sessionId) }
+
+            Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                .font(.system(size: 8, weight: .semibold))
+                .foregroundStyle(.secondary)
+
             Text(project.name).font(.system(size: 12))
+
+            // 한 프로젝트에 세션이 여럿이면 그 사실을 알린다 —
+            // 안 그러면 current 하나만 보고 "이게 전부"로 읽는다.
+            if project.sessionCount > 1 {
+                Text("+\(project.sessionCount - 1)")
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+            }
+
             Spacer(minLength: 8)
+
             if let text = contextText {
                 Text(text)
                     .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(contextColor)
             }
         }
+        .contentShape(Rectangle())
+        .onTapGesture { client.toggleExpanded(session.sessionId) }
+    }
+
+    private var detail: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            ForEach(session.details, id: \.0) { label, value in
+                HStack(alignment: .top, spacing: 6) {
+                    Text(label)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 62, alignment: .leading)
+                    Text(value)
+                        .font(.system(size: 10, design: .monospaced))
+                        .textSelection(.enabled)
+                }
+            }
+
+            if let title = session.title {
+                Text(title)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+                    .padding(.top, 2)
+            }
+
+            // 경로는 마지막에. 길어서 위에 두면 나머지를 밀어낸다.
+            Text(project.cwd)
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundStyle(.secondary.opacity(0.7))
+                .lineLimit(1)
+                .truncationMode(.head)
+                .textSelection(.enabled)
+        }
+        .padding(.leading, 18)
+        .padding(.bottom, 4)
     }
 
     /// 컨텍스트 경고 (#23). 70% 준비 / 85% 지금 —
     /// **평소엔 조용해야 경고가 보인다.**
     private var contextText: String? {
-        guard let ratio = project.current.contextRatio else { return nil }
+        guard let ratio = session.contextRatio else { return nil }
         return "\(Int(ratio * 100))%"
     }
 
     private var contextColor: Color {
-        guard let ratio = project.current.contextRatio else { return .secondary }
+        guard let ratio = session.contextRatio else { return .secondary }
         if ratio >= 0.85 { return Color(red: 0.83, green: 0.40, blue: 0.25) }
         if ratio >= 0.70 { return Color(red: 0.79, green: 0.64, blue: 0.15) }
         return .secondary

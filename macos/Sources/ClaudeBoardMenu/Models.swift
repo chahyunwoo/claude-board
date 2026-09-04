@@ -10,13 +10,50 @@ struct Session: Decodable, Identifiable {
     let title: String?
     let lastPrompt: String?
     let branch: String?
+    let permissionMode: String?
+    let model: String?
     let contextTokens: Int?
     let contextLimit: Int?
     let contextRatio: Double?
     let lastActivityAt: String?
+    let startedAt: String?
     let ordinal: Int
 
     var id: String { sessionId }
+
+    /// 상세에 보여줄 항목들. **값이 없으면 그 줄을 아예 안 낸다** —
+    /// "모름"을 나열하는 것보다 조용한 편이 낫다.
+    var details: [(String, String)] {
+        var rows: [(String, String)] = [("PID", String(pid))]
+        if let model { rows.append(("모델", model)) }
+        if let permissionMode { rows.append(("권한", permissionMode)) }
+        if let branch { rows.append(("브랜치", branch)) }
+        if let text = Self.elapsed(since: startedAt) { rows.append(("시작", text)) }
+        if let text = Self.elapsed(since: lastActivityAt) { rows.append(("마지막 활동", text)) }
+        if let contextTokens, let contextLimit {
+            rows.append(("컨텍스트", "\(contextTokens.formatted()) / \(contextLimit.formatted())"))
+        }
+        return rows
+    }
+
+    /// ISO8601 → "3시간 전". **절대 시각보다 경과가 낫다** —
+    /// 판단하려는 건 "언제였나"가 아니라 "얼마나 방치됐나"다.
+    ///
+    /// ⚠️ 백엔드는 밀리초를 붙여 보낸다(`.230Z`). 기본 포맷터는 그걸 못 읽으니
+    /// `withFractionalSeconds` 를 켜고, 그래도 실패하면 기본형으로 한 번 더 본다.
+    static func elapsed(since iso: String?) -> String? {
+        guard let iso else { return nil }
+        let withMs = ISO8601DateFormatter()
+        withMs.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let date = withMs.date(from: iso) ?? ISO8601DateFormatter().date(from: iso)
+        guard let date else { return nil }
+
+        let seconds = Int(Date().timeIntervalSince(date))
+        if seconds < 60 { return "방금" }
+        if seconds < 3600 { return "\(seconds / 60)분 전" }
+        if seconds < 86400 { return "\(seconds / 3600)시간 전" }
+        return "\(seconds / 86400)일 전"
+    }
 }
 
 /// 상태 4종. `ENDED` 는 없다 (#17) — 백엔드가 pid 없는 항목을 걸러낸다.

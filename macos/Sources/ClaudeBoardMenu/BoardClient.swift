@@ -77,6 +77,63 @@ final class BoardClient: ObservableObject {
         }
     }
 
+    // MARK: - 선택과 kill 명령
+    //
+    // **앱은 세션을 죽이지 않는다.** 명령어를 클립보드에 넣어줄 뿐이고,
+    // 실행은 터미널에서 사용자가 한다 — 붙여넣기 전에 눈으로 확인하는 단계가 있어
+    // 조회 전용 원칙(docs/00-개요.md)의 "잘못 눌러 작업이 날아가는" 경로가 아니다.
+
+    /// 펼쳐진 행. sessionId 기준.
+    @Published var expanded: Set<String> = []
+
+    /// 선택된 세션. **pid 가 아니라 sessionId 로 잡는다** —
+    /// pid 는 프로세스가 죽으면 OS 가 재사용하므로, 선택해둔 사이에 값이 바뀌면
+    /// 엉뚱한 프로세스를 죽이는 명령이 만들어진다. pid 는 명령을 만드는 순간
+    /// 최신 스냅샷에서 다시 읽는다.
+    @Published var selected: Set<String> = []
+
+    func toggleExpanded(_ sessionId: String) {
+        if expanded.contains(sessionId) { expanded.remove(sessionId) } else { expanded.insert(sessionId) }
+    }
+
+    func toggleSelected(_ sessionId: String) {
+        if selected.contains(sessionId) { selected.remove(sessionId) } else { selected.insert(sessionId) }
+    }
+
+    func clearSelection() { selected.removeAll() }
+
+    /// 스냅샷에 살아있는 모든 세션. 프로젝트의 current + others 를 편다.
+    private var allSessions: [Session] {
+        guard let snapshot else { return [] }
+        return snapshot.projects.flatMap { [$0.current] + $0.others }
+    }
+
+    /// 선택된 것 중 **지금 스냅샷에 실제로 살아있는** 세션의 pid.
+    ///
+    /// 선택한 뒤 세션이 끝났으면 그 pid 는 빠진다 — 죽은 세션의 pid 를 명령에 넣으면
+    /// 재사용된 남의 프로세스를 죽일 수 있다.
+    var selectedPids: [Int] {
+        allSessions.filter { selected.contains($0.sessionId) }
+            .map(\.pid)
+            .sorted()
+    }
+
+    /// 선택이 스냅샷에서 사라진 개수. 화면에 알려서 조용히 빠지지 않게 한다.
+    var staleSelectionCount: Int {
+        let alive = Set(allSessions.map(\.sessionId))
+        return selected.subtracting(alive).count
+    }
+
+    /// 클립보드에 넣을 kill 명령.
+    ///
+    /// `-9` 를 쓰지 않는다 — SIGTERM 이면 Claude Code 가 기록을 정리하고 끝낼 수 있다.
+    /// SIGKILL 은 그 기회를 뺏는다.
+    var killCommand: String? {
+        let pids = selectedPids
+        guard !pids.isEmpty else { return nil }
+        return "kill " + pids.map(String.init).joined(separator: " ")
+    }
+
     private let streamURL = URL(string: "http://127.0.0.1:7777/api/stream")!
     private var task: Task<Void, Never>?
 
