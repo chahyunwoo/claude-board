@@ -47,9 +47,10 @@ rm -rf "/Applications/Claude Board.app"
 cp -R "$APP" "/Applications/Claude Board.app"
 
 echo "▸ 로그인 항목 등록"
-# ⚠️ launchd(LaunchAgent)가 아니라 **로그인 항목**을 쓴다.
-# 이 기계의 launchd 는 KeepAlive·StartInterval 이 동작하지 않는다 (#37 에서 최소 재현).
-# 로그인 항목은 다른 메커니즘이고 실제로 잘 뜬다 (Rectangle·Notion 등이 그렇게 뜬다).
+# launchd(LaunchAgent)가 아니라 **로그인 항목**을 쓴다 — GUI 앱을 로그인 시 띄우는
+# 표준 수단이고 Rectangle·Notion 등이 그렇게 뜬다.
+# ⚠️ 정정(2026-09-04): 여기 원래 "이 기계의 launchd 가 고장났다"고 적혀 있었는데 틀렸다.
+# 같은 기계에서 caddy 가 KeepAlive:true 로 잘 돈다 (docs/04-배포.md).
 osascript -e 'tell application "System Events" to make login item at end with properties {path:"/Applications/Claude Board.app", hidden:true}' >/dev/null 2>&1 || {
   echo "  ⚠️ 자동 등록 실패 — 시스템 설정 > 일반 > 로그인 항목에서 직접 추가하세요"
 }
