@@ -1,8 +1,8 @@
 package dev.hyunwoo.claudeboard;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import dev.hyunwoo.claudeboard.collect.Aggregator;
 import dev.hyunwoo.claudeboard.domain.BoardSnapshot;
@@ -23,10 +23,18 @@ public final class CliRunner {
 
     /** 종료 코드. 0 = 정상, 1 = JSON 조차 내보내지 못함. */
     public static int run() {
-        ObjectMapper mapper = new ObjectMapper()
-                .registerModule(new JavaTimeModule())
+        // ⚠️ **null 필드가 JSON 에 남아야 한다.** 프론트의 types.ts 가
+        // title·lastPrompt·branch 의 null 을 성실히 표기하고(docs/03-프론트.md),
+        // 역순 리더가 상한에 걸리면 실제로 null 이 온다 —
+        // 생략되면 "값이 없다"와 "필드가 없다"가 구별되지 않는다.
+        //
+        // 그것이 Jackson 의 기본 동작(Include.ALWAYS)이라 명시하지 않는다.
+        // serializationInclusion 계열은 deprecated 다. 기본값이 바뀌면
+        // CliRunnerTest 의 "null 필드가 살아있는가" 검사가 잡는다.
+        ObjectMapper mapper = JsonMapper.builder()
+                .addModule(new JavaTimeModule())
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
-                .setSerializationInclusion(JsonInclude.Include.ALWAYS);
+                .build();
 
         try {
             BoardSnapshot snapshot = Aggregator.withDefaults().collect(Instant.now());

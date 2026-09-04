@@ -1,6 +1,6 @@
 plugins {
     java
-    id("org.springframework.boot") version "3.5.0"
+    id("org.springframework.boot") version "3.5.16"
     id("io.spring.dependency-management") version "1.1.7"
 }
 
@@ -20,7 +20,16 @@ repositories {
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
-    testImplementation("org.assertj:assertj-core")
+}
+
+// deprecated API 를 **이름까지** 보여준다 (#30).
+//
+// 기본값은 "uses or overrides a deprecated API" 라는 요약만 내서,
+// Spring Boot 를 올렸을 때 무엇이 deprecated 인지 알 수 없었다 —
+// 실측으로 Jackson 의 setSerializationInclusion 이었고, 켜야 이름이 나왔다.
+// CI 로그의 경고를 읽으라는 docs/06-개발환경.md 항목과 같은 취지다.
+tasks.withType<JavaCompile> {
+    options.compilerArgs.add("-Xlint:deprecation")
 }
 
 tasks.withType<Test> {
