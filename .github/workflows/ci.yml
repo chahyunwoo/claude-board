@@ -27,6 +27,14 @@ jobs:
       - uses: dorny/paths-filter@v4
         id: filter
         with:
+          # 워크플로 자체가 바뀌면 **모든 잡을 돌린다** (#25).
+          #
+          # 실측: 액션 버전을 올리는 PR 에서 backend·frontend·e2e 가 전부 스킵되어
+          # **갱신한 액션 6개 중 4개가 한 번도 실행되지 않은 채 CI 가 초록이었다.**
+          # setup-java·setup-node·upload-artifact·setup-gradle 이 그것들이다 —
+          # 그대로 머지했다면 다음 PR 에서 터졌을 것이다.
+          #
+          # CI 를 고치는 변경이 CI 로 검증되지 않는 구멍이었다.
           filters: |
             backend:
               - 'src/**'
@@ -34,10 +42,13 @@ jobs:
               - 'settings.gradle.kts'
               - 'gradle/**'
               - 'gradlew'
+              - '.github/workflows/**'
             frontend:
               - 'frontend/**'
+              - '.github/workflows/**'
             hooks:
               - '.githooks/**'
+              - '.github/workflows/**'
 
   # 훅이 **실제로 작동하는지** 검사한다.
   #
