@@ -25,9 +25,9 @@
     "@vue/test-utils": "^2.4.6",
     "jsdom": "^25.0.1",
     "tailwindcss": "^4.3.3",
-    "typescript": "~5.7.2",
+    "typescript": "^6.0.3",
     "vite": "^8.2.2",
     "vitest": "^5.0.0",
-    "vue-tsc": "^2.2.0"
+    "vue-tsc": "^3.3.11"
   }
 }
