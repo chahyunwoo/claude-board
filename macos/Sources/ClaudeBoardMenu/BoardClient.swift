@@ -18,9 +18,13 @@ enum Health: Equatable {
 ///
 /// ## 왜 앱이 워치독을 겸하는가
 ///
-/// 이 기계의 launchd 는 `KeepAlive` 도 `StartInterval` 도 동작하지 않는다
-/// (#37 에서 단순 셸 스크립트로 최소 재현했다). 그런데 이 앱은 **어차피 항상 떠 있으므로**
-/// 백엔드를 감시할 수 있다 — launchd 에 지속성을 맡기는 대신 앱이 직접 한다.
+/// 이 앱은 **어차피 항상 떠 있으므로** 백엔드를 감시할 수 있다.
+///
+/// ⚠️ 정정(2026-09-04): 여기 원래 "이 기계의 launchd 는 KeepAlive 가 동작하지 않는다"고
+/// 적혀 있었는데 **틀렸다** — 같은 기계에서 caddy·concert-watch 가 KeepAlive:true 로 잘 돈다.
+/// 관측된 사실은 그 잡의 종료 코드가 143(SIGTERM)이었다는 것뿐이고, launchd 는 그것을
+/// 정상 종료로 보아 되살리지 않는다. 앱이 워치독을 겸하는 구조는 그대로 두되,
+/// 근거를 "launchd 고장"으로 삼지 않는다 (docs/04-배포.md).
 ///
 /// **데이터는 이 기계를 떠나지 않는다** (CLAUDE.md 절대 원칙).
 /// 이 클래스는 `127.0.0.1` 외에 아무 데도 연결하지 않는다.
@@ -40,24 +44,45 @@ final class BoardClient: ObservableObject {
         }
     }
 
-    /// 상태 그룹 하나. **튜플이 아니라 구조체로 둔다** —
-    /// SwiftUI 의 ForEach 는 Identifiable 을 요구하고, 튜플 배열에 키패스 id 를 주면
-    /// 조용히 안 그려지는 경우가 있다.
+    /// 화면의 한 줄. **세션 하나 = 한 줄이다.**
+    ///
+    /// ⚠️ 처음엔 프로젝트 하나에 한 줄을 냈다. 그러면 같은 폴더에서 세션을 여러 개
+    /// 띄웠을 때 `current` 만 보이고 나머지가 **화면에서 사라진다** —
+    /// 실측(#37): current 54.4%, others 61.6% 인데 화면에는 54.4% 만 떴다.
+    /// 최댓값을 대신 내는 것으로 때워봤지만, "두 개가 떠 있으면 두 개 다 보여야 한다"가
+    /// 맞다. 실측으로 다 펴도 11줄 → 12줄이라 길어지지도 않는다.
+    struct Row: Identifiable {
+        let project: Project
+        let session: Session
+        /// 이 프로젝트에 살아있는 세션이 여럿인가. 여럿이면 화면에 번호를 낸다.
+        let siblingCount: Int
+        var id: String { session.sessionId }
+    }
+
     struct Group: Identifiable {
         let state: SessionState
-        let projects: [Project]
+        let rows: [Row]
         var id: String { state.rawValue }
     }
 
     /// 상태 그룹. 답변 대기 → 멈춤 의심 → 작업 중 → 유휴 (docs/03-프론트.md "정렬").
+    ///
+    /// **세션마다 자기 상태로 분류된다.** 프로젝트 단위로 묶으면 `others` 의 세션이
+    /// `current` 의 상태에 끌려가 엉뚱한 그룹에 들어간다.
     var groups: [Group] {
         guard let snapshot else { return [] }
+        let all: [Row] = snapshot.projects.flatMap { project in
+            let sessions = project.allSessions
+            return sessions.map {
+                Row(project: project, session: $0, siblingCount: sessions.count)
+            }
+        }
         // order 순으로 돈다 — CaseIterable 이라 상태가 늘어도 여기를 안 고쳐도 된다.
         let ordered = SessionState.allCases.sorted { $0.order < $1.order }
         return ordered.compactMap { (state: SessionState) -> Group? in
-            let ps = snapshot.projects.filter { $0.current.state == state }
-            guard !ps.isEmpty else { return nil }
-            return Group(state: state, projects: Self.sort(ps, for: state))
+            let rows = all.filter { $0.session.state == state }
+            guard !rows.isEmpty else { return nil }
+            return Group(state: state, rows: Self.sort(rows, for: state))
         }
     }
 
@@ -66,14 +91,17 @@ final class BoardClient: ObservableObject {
     /// 작업 중·유휴는 이름순이어야 한다 — `lastActivityAt` 이 5초마다 갱신되므로
     /// 그것으로 정렬하면 내용이 안 바뀌었는데 순서가 계속 뒤집힌다.
     /// "방치된 것이 위로"의 가치는 답변 대기·멈춤 의심에서만 나온다.
-    private static func sort(_ projects: [Project], for state: SessionState) -> [Project] {
+    ///
+    /// 같은 프로젝트의 세션끼리는 `ordinal` 로 갈라 순서가 흔들리지 않게 한다.
+    private static func sort(_ rows: [Row], for state: SessionState) -> [Row] {
         if state == .working || state == .idle {
-            return projects.sorted { $0.name < $1.name }
+            return rows.sorted {
+                ($0.project.name, $0.session.ordinal) < ($1.project.name, $1.session.ordinal)
+            }
         }
-        return projects.sorted { a, b in
-            let x = a.current.lastActivityAt ?? ""
-            let y = b.current.lastActivityAt ?? ""
-            return x < y
+        return rows.sorted {
+            ($0.session.lastActivityAt ?? "", $0.session.ordinal)
+                < ($1.session.lastActivityAt ?? "", $1.session.ordinal)
         }
     }
 

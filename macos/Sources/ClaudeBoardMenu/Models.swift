@@ -86,12 +86,41 @@ enum SessionState: String, Decodable, Equatable, CaseIterable {
     }
 
     /// 색이 아니라 **위치와 라벨로** 먼저 구분한다. 기호는 보조다 (docs/03-프론트.md).
+    ///
+    /// ⚠️ **이모지를 쓰지 않는다.** `⏳⚠▶·` 를 쓰다가 걷어냈다 —
+    /// 컬러 이모지는 폰트마다 렌더링이 다르고 주변 UI 톤과 섞이지 않아 튄다.
+    /// SF Symbol 은 폰트 굵기·크기를 따라가고 다크모드에서도 알아서 맞춰진다.
+    ///
+    /// **모양은 통일하고 색으로만 가른다** — 아이콘이 제각각이면 목록이 분주해지고,
+    /// 상태 구분은 어차피 위치와 라벨이 먼저 한다.
     var symbol: String {
         switch self {
-        case .waiting: return "⏳"
-        case .stalled: return "⚠"
-        case .working: return "▶"
-        case .idle: return "·"
+        case .waiting, .stalled, .working: return "circle.fill"
+        case .idle: return "circle"
+        }
+    }
+}
+
+/// 상태 색. **한 곳에서만 정한다** — 색이 여러 곳에 흩어지면 갈라진다.
+///
+/// docs/03-프론트.md "시각 규칙" 의 앰버·레드·그린·회색을 따르되,
+/// **채도를 낮춰서 쓴다.** 그 문서가 *"색이 아니라 위치와 라벨로 먼저 구분한다,
+/// 색은 보조"* 라고 정했는데, 웹에서 쓰던 채도 높은 값을 그대로 가져왔더니
+/// 색이 먼저 튀어서 그 원칙을 오히려 어기고 있었다.
+///
+/// SwiftUI 를 import 하지 않으려고 RGB 만 낸다 — `collect/` 처럼
+/// 모델 계층은 프레임워크에 기대지 않는 편이 옮기기 쉽다.
+extension SessionState {
+    var rgb: (Double, Double, Double) {
+        switch self {
+        // 앰버 — 시선을 끌어야 하지만 형광은 아니다
+        case .waiting: return (0.78, 0.60, 0.30)
+        // 레드 — 벽돌색 쪽으로. 경고지만 비명은 아니다
+        case .stalled: return (0.72, 0.40, 0.36)
+        // 그린 — 세이지. 평상시 상태라 가장 조용해야 한다
+        case .working: return (0.44, 0.60, 0.48)
+        // 유휴는 시스템 secondary 를 쓴다 (여기 값은 안 쓰인다)
+        case .idle:    return (0.55, 0.55, 0.55)
         }
     }
 }
@@ -104,6 +133,13 @@ struct Project: Decodable, Identifiable {
     let sessionCount: Int
 
     var id: String { cwd }
+}
+
+extension Project {
+    /// 이 프로젝트의 모든 살아있는 세션. **`current` 만 보면 안 된다** —
+    /// 실측(#37): `others` 에 있던 61.6% 세션이 화면에 아예 안 나왔고,
+    /// 정작 `current` 는 54.4% 였다. **가장 위험한 것이 숨는 구조**였다.
+    var allSessions: [Session] { [current] + others }
 }
 
 struct BoardSnapshot: Decodable {
