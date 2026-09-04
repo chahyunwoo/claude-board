@@ -30,10 +30,6 @@ public final class SessionFiles {
         this.projectsRoot = projectsRoot;
     }
 
-    public Path root() {
-        return projectsRoot;
-    }
-
     /**
      * 모든 세션 기록 파일. {@code sessionId -> 파일 경로}.
      *

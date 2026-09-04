@@ -10,7 +10,7 @@ STATES="$SP/states.tsv"
 RES="$SP/resources.tsv"
 SESS="$SP/sessions.tsv"
 
-[ -s "$STATES" ] || printf 'ts\tWAITING\tSTALLED\tWORKING\tIDLE\tENDED\ttotal\n' > "$STATES"
+[ -s "$STATES" ] || printf 'ts\tWAITING\tSTALLED\tWORKING\tIDLE\ttotal\n' > "$STATES"
 [ -s "$RES" ]    || printf 'ts\trss_kb\tcpu_pct\tthreads\tsse_established\tfd_count\n' > "$RES"
 # 세션별 — 전이(WORKING→STALLED)를 보려면 세션 단위로 남겨야 한다.
 # quietSec = 샘플 시각 - lastActivityAt. STALLED 임계(600s)와 직접 대조할 값이다.
@@ -31,7 +31,6 @@ while kill -0 "$PID" 2>/dev/null; do
          ($s | map(select(.state=="STALLED")) | length),
          ($s | map(select(.state=="WORKING")) | length),
          ($s | map(select(.state=="IDLE"))    | length),
-         ($s | map(select(.state=="ENDED"))   | length),
          ($s | length)]
       | @tsv' >> "$STATES"
 

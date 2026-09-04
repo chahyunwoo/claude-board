@@ -56,6 +56,42 @@ export function contextOf(session: Session): string | null {
   return `${absolute} / ${compactTokens(contextLimit)} · ${percent}%`
 }
 
+/**
+ * 컨텍스트가 얼마나 급한가 (#23).
+ *
+ * [docs/00-개요.md](../../docs/00-개요.md) 목표 3 이 *"컨텍스트 사용량**과 경고** — 새 세션 시점 판단"*
+ * 인데 경고가 구현돼 있지 않았다 — 90% 든 10% 든 같은 회색이라 **새 세션을 열 시점이
+ * 화면에서 드러나지 않았다.**
+ *
+ * 임계값 근거: 이 도구를 쓰는 방식이 *"프로젝트마다 일정 범위가 되면 새 세션을 여는"* 것이므로
+ * (00-개요 "문제"), 여유가 있을 때 미리 알아야 한다.
+ * - `warn` 70%: 지금 하던 작업을 마치고 새 세션을 열 준비를 할 시점
+ * - `danger` 85%: 지금 열어야 하는 시점
+ *
+ * ⚠️ **분모가 틀릴 수 있다.** 기록의 모델명이 `claude-opus-5` 로만 남아 `[1m]` 변형이
+ * 구분되지 않는다(00-개요 결정사항 3). 그래서 경고는 **보조**이고 절대값 표시를 없애지 않는다.
+ */
+export type ContextLevel = 'normal' | 'warn' | 'danger'
+
+export function contextLevelOf(session: Session): ContextLevel {
+  const { contextTokens, contextLimit, contextRatio } = session
+  const ratio = contextRatio != null
+    ? contextRatio
+    : contextTokens != null && contextLimit != null && contextLimit > 0
+      ? contextTokens / contextLimit
+      : null
+  if (ratio == null) {
+    return 'normal'
+  }
+  if (ratio >= 0.85) {
+    return 'danger'
+  }
+  if (ratio >= 0.7) {
+    return 'warn'
+  }
+  return 'normal'
+}
+
 /** `544102` → `544K`. 자릿수가 흔들리면 갱신 때 레이아웃이 튄다. */
 function compactTokens(tokens: number): string {
   if (tokens >= 1_000_000) {
@@ -100,9 +136,39 @@ export function elapsedOf(iso: string | null, now: number): string {
  * 줄바꿈을 공백으로 접는다 — 여러 줄이 그대로 오면 한 줄 레이아웃이 무너진다.
  * 길이도 자른다: **실측 최대 4,395자**가 존재해 DOM 에 통째로 넣을 이유가 없다
  * (CSS 말줄임은 보이는 것만 줄이지 노드 크기는 줄이지 않는다).
+ *
+ * ## 꺾쇠는 벗기고 내용은 남긴다 (#23)
+ *
+ * 시스템 태그가 프롬프트 줄을 통째로 먹는 세션이 있었다:
+ * ```
+ * <task-notification> <task-id>bm88crchn</task-id> <summary>Monitor event: …
+ * ```
+ * 이 줄은 *"내가 뭘 시켰더라"* 를 복구하는 유일한 단서인데(docs/03-프론트.md)
+ * 태그 이름만 보여 아무 정보도 주지 못했다.
+ *
+ * **#11·#15 에서 "거르면 뭐가 걸러졌는지 화면에서 사라진다"는 이유로 미뤘던 건인데,
+ * 꺾쇠만 벗기면 그 문제가 없다** — 태그 이름만 빠지고 내용은 전부 남는다:
+ * ```
+ * <task-notification><summary>모니터 이벤트</summary>  →  모니터 이벤트
+ * <table><td>이름</td><td>값</td></table> 이 표 봐줘   →  이름 값 이 표 봐줘
+ * 그냥 <strong>강조</strong>가 든 문장                  →  그냥 강조 가 든 문장
+ * ```
+ * 사용자가 붙여넣은 HTML(실측 1위가 `<td>` 19건)도 **내용이 살아남는다.**
+ * 태그 이름 화이트리스트를 두지 않으므로 Claude Code 가 새 태그를 추가해도 어긋나지 않는다.
+ *
+ * ⚠️ **`<[^>]*>` 로 뭉뚱그리면 안 된다.** 태그가 아닌 부등호까지 먹어 내용이 사라진다:
+ * ```
+ * "a < b 이고 c > d"  →  "a d"          ← "< b 이고 c >" 를 태그로 오인
+ * "<!-- 이 파일은 … -->"  →  ""           ← 주석이 통째로 사라진다 (실측 2건)
+ * ```
+ * 그래서 **여는/닫는 태그 형태**(`<이름 …>`, `</이름>`)만 지운다.
+ * 태그 이름은 글자로 시작해야 하므로 `< b` 같은 부등호는 걸리지 않는다.
  */
 export function promptOf(session: Session, limit = 200): string | null {
-  const raw = session.lastPrompt?.replace(/\s+/gu, ' ').trim()
+  const raw = session.lastPrompt
+    ?.replace(/<\/?[a-zA-Z][a-zA-Z0-9_-]*(?:\s[^<>]*)?\/?>/gu, ' ')
+    .replace(/\s+/gu, ' ')
+    .trim()
   if (!raw) {
     return null
   }

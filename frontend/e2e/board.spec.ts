@@ -91,6 +91,45 @@ test('긴 브랜치명이 가로 스크롤을 만들지 않는다', async ({ pag
   expect(overflow).toBeLessThanOrEqual(0)
 })
 
+// #23 — 다열 레이아웃(grid auto-fill)을 넣으면서 좁은 화면에서 가로 스크롤이 생겼다.
+// minmax(38rem, …) 의 최소값 608px 가 375px 화면에서도 강제됐다.
+// min(100%, 38rem) 으로 고쳤고, 이 테스트가 그것을 지킨다.
+test('좁은 화면에서도 가로 스크롤이 없다', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 })
+  await push(
+    page,
+    snapshot({
+      projects: [
+        project('alpha', 'WAITING', { lastPrompt: '가'.repeat(300) }),
+        project('beta', 'WORKING'),
+        project('gamma', 'STALLED', { branch: 'feature/very-long-branch-name-here' }),
+      ],
+    }),
+  )
+
+  const overflow = await page.evaluate(
+    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
+  )
+  expect(overflow).toBeLessThanOrEqual(0)
+})
+
+// 넓은 화면에서는 열이 늘어야 한다 — 안 늘면 상시 표시의 이점이 사라진다.
+test('넓은 화면에서는 여러 열이 된다', async ({ page }) => {
+  await page.setViewportSize({ width: 2560, height: 1440 })
+  await push(
+    page,
+    snapshot({
+      projects: Array.from({ length: 6 }, (_, i) => project(`p-${i}`, 'WAITING')),
+    }),
+  )
+
+  const columns = await page.evaluate(() => {
+    const rows = document.querySelector('.rows')
+    return rows ? getComputedStyle(rows).gridTemplateColumns.split(' ').length : 0
+  })
+  expect(columns).toBeGreaterThan(1)
+})
+
 test('컨텍스트는 절대값·상한·% 셋을 모두 낸다', async ({ page }) => {
   await push(page, snapshot({ projects: [project('notify-service', 'WAITING')] }))
 

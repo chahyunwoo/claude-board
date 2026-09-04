@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { branchOf, contextOf, elapsedOf, promptOf, titleOf } from '@/lib/format'
+import { branchOf, contextLevelOf, contextOf, elapsedOf, promptOf, titleOf } from '@/lib/format'
 import type { Session } from '@/lib/types'
 
 /**
@@ -25,6 +25,8 @@ const props = defineProps<{
 const title = computed(() => titleOf(props.session))
 const branch = computed(() => branchOf(props.session))
 const context = computed(() => contextOf(props.session))
+// 경고는 보조다 — 분모가 틀릴 수 있으므로 절대값 표시를 대체하지 않는다 (#23).
+const contextLevel = computed(() => contextLevelOf(props.session))
 const prompt = computed(() => promptOf(props.session))
 const elapsed = computed(() => elapsedOf(props.session.lastActivityAt, props.now))
 /** 제목이 없을 때만 흐리게 — 있으면 평범하게 읽혀야 한다. */
@@ -42,7 +44,7 @@ const untitled = computed(() => !props.session.title?.trim())
       <span>{{ elapsed }}</span>
       <template v-if="context">
         <span class="dot">·</span>
-        <span>ctx {{ context }}</span>
+        <span :class="`ctx ctx-${contextLevel}`">ctx {{ context }}</span>
       </template>
       <template v-if="session.ordinal > 0">
         <span class="dot">·</span>
@@ -122,7 +124,9 @@ const untitled = computed(() => !props.session.title?.trim())
   margin-top: 0.1875rem;
   display: flex;
   gap: 0.375rem;
-  color: var(--color-fg-faint);
+  /* 프롬프트는 "내가 뭘 시켰더라"를 복구하는 핵심 정보다 (docs/03-프론트.md).
+     fg-faint 는 대비 3.01 로 WCAG AA(4.5) 미달이라 상시 표시에서 잘 안 보였다 (#23). */
+  color: var(--color-fg-dim);
   font-size: 0.8125rem;
   min-width: 0;
 }
