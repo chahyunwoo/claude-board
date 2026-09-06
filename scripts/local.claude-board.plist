@@ -4,7 +4,10 @@
 <dict>
   <key>Label</key><string>local.claude-board</string>
 
-  <!-- 절대 경로여야 한다. launchd 는 PATH 를 물려주지 않고,
+  <!-- ⚠️ `__JAR__`·`__LOG__`·`__ROOT__`·`__PATH__` 는 install-agent.sh 가 치환한다.
+       🔴 경로를 하드코딩하지 않는다 — 저장소 위치가 기계마다 다르다.
+
+       표준 형태: 런타임 절대경로 + 대상. launchd 는 PATH 를 물려주지 않고,
        JDK 21 은 keg-only 라 /usr/bin/java 로는 안 잡힌다 (docs/06-개발환경.md). -->
   <key>ProgramArguments</key>
   <array>
@@ -15,8 +18,7 @@
 
   <!-- ⚠️ launchd 는 PATH 를 물려주지 않는다. claude CLI 를 못 찾으면
        세션 목록이 비어 화면이 텅 빈다 — 실측으로 밟았고, errors 가 알려줬다:
-         "agents 목록을 읽지 못함: Cannot run program \"claude\""
-       nvm 경로가 바뀌면 여기도 고쳐야 한다 (설치 스크립트가 자동으로 채운다). -->
+         "agents 목록을 읽지 못함: Cannot run program \"claude\"" -->
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key><string>__PATH__</string>
@@ -24,16 +26,19 @@
 
   <key>RunAtLoad</key><true/>
 
-  <!-- KeepAlive 는 넣지 않는다.
-       ⚠️ 정정(2026-09-04): 여기 원래 "이 환경에서 작동하지 않는다"고 적혀 있었는데
-       틀렸다. 같은 기계에서 KeepAlive:true 를 쓰는 caddy·concert-watch 가 잘 돈다.
-       관측된 사실은 이 잡의 last exit code = 143 (=128+15, SIGTERM)이라는 것뿐이고,
-       KeepAlive:true 는 launchd 가 정상 종료로 판단하면 되살리지 않는다 —
-       kill 로 죽여보는 검증이 정확히 그 조건을 만든다.
-       안 넣는 선택은 유지한다(조회 전용이라 손해가 없고 메뉴바 앱이 워치독을 겸한다).
-       다만 그 근거를 "launchd 가 고장났다"로 적지 않는다. docs/04-배포.md 참고. -->
+  <!-- ⭐ KeepAlive 는 **작동한다.** 옛 주석("이 환경에서 작동하지 않는다,
+       143 을 정상 종료로 본다")은 오진이었다 — 2026-09-06 재조사:
+         · 셸 래퍼가 `nohup java &` 로 자기 프로세스를 띄워 launchd 를 우회했고,
+         · `claude-board stop` 이 포트로 찾아 죽인 대상이 launchd 가 띄운 java 였다.
+           그래서 143(SIGTERM)이 찍혔고, KeepAlive 가 없으니 그대로 방치됐다.
+         · 그 뒤 래퍼가 띄운 고아 프로세스가 서비스해서 "launchd 는 죽었는데
+           화면은 뜬다"는 상태가 유지됐다(실측: state=not running, pid 57955 가 :7777).
+       이제 래퍼가 launchctl 로 위임하므로 우회 경로가 없다.
+       SuccessfulExit 을 쓰지 않고 무조건 재시작한다 — 조회 전용 대시보드라
+       어떤 이유로 죽든 다시 떠 있는 것이 맞다. -->
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
 
-  <!-- 로그는 셸 래퍼와 같은 곳으로 — 어느 쪽으로 띄웠든 한 곳만 보면 된다. -->
   <key>StandardOutPath</key><string>__LOG__</string>
   <key>StandardErrorPath</key><string>__LOG__</string>
 

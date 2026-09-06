@@ -23,6 +23,14 @@ PORT=7777
 LOG_DIR="$HOME/Library/Logs/claude-board"
 LOG="$LOG_DIR/claude-board.log"
 
+# ⭐ 기동은 **launchd 가 단독으로** 소유한다.
+# 예전에는 이 스크립트가 `nohup java &` 로 자기 프로세스를 띄워 launchd 를 우회했고,
+# 그 결과 "launchd 잡은 죽었는데(143) 고아 프로세스가 서비스 중"인 상태가 6일 넘게
+# 유지됐다(2026-09-06 실측: launchd state=not running, 실제로는 pid 57955 가 :7777 점유).
+# 자동화의 소유자가 둘이면 어느 쪽도 상태를 책임지지 않는다.
+SVC="gui/$(id -u)/local.claude-board"
+PLIST="$HOME/Library/LaunchAgents/local.claude-board.plist"
+
 [ -x "$JAVA" ] || JAVA="$(command -v java || true)"
 [ -n "$JAVA" ] || { echo "✗ JDK 21 을 찾지 못했다 — brew install openjdk@21" >&2; exit 1; }
 
@@ -42,16 +50,16 @@ case "${1:-start}" in
     fi
     [ -f "$JAR" ] || { echo "✗ jar 이 없다 — scripts/build.sh 를 먼저 돌려라" >&2; exit 1; }
     mkdir -p "$LOG_DIR"
-    nohup "$JAVA" -jar "$JAR" >> "$LOG" 2>&1 &
-    sleep 3
-    pid="$(running_pid)"
+    launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null || launchctl kickstart "$SVC" >/dev/null
+    for _ in $(seq 1 15); do pid="$(running_pid)"; [ -n "$pid" ] && break; sleep 1; done
     [ -n "$pid" ] || { echo "✗ 기동 실패 — $LOG 를 봐라" >&2; tail -5 "$LOG" >&2; exit 1; }
     echo "✓ 떴다 (pid $pid) — http://127.0.0.1:$PORT"
     ;;
   stop)
     pid="$(running_pid)"
-    [ -n "$pid" ] || { echo "떠 있지 않다"; exit 0; }
-    kill "$pid" && echo "✓ 내렸다 (pid $pid)"
+    # bootout 해야 멈춘다. kill 만 하면 KeepAlive 가 즉시 다시 띄운다.
+    launchctl bootout "$SVC" 2>/dev/null || true
+    [ -n "$pid" ] && echo "✓ 내렸다 (pid $pid)" || echo "떠 있지 않다"
     ;;
   restart)
     "$0" stop

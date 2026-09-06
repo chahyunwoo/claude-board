@@ -30,16 +30,24 @@ CLAUDE_BIN="$(command -v claude || true)"
 [ -n "$CLAUDE_BIN" ] || { echo "✗ claude CLI 를 찾지 못했다 — 세션 목록을 못 읽는다" >&2; exit 1; }
 AGENT_PATH="$(dirname "$CLAUDE_BIN"):/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
+# 저장소의 템플릿을 렌더링한다. 렌더링본을 공통 게이트에 넘기고, 게이트가 설치한다.
+RENDER_DIR="$(mktemp -d)"
+RENDERED="$RENDER_DIR/$LABEL.plist"
+trap 'rm -rf "$RENDER_DIR"' EXIT
 sed -e "s|__JAR__|$JAR|" -e "s|__LOG__|$LOG|" -e "s|__ROOT__|$ROOT|" \
     -e "s|__PATH__|$AGENT_PATH|" \
-    "$ROOT/scripts/$LABEL.plist" > "$PLIST"
+    "$ROOT/scripts/$LABEL.plist" > "$RENDERED"
 
 # 이미 떠 있으면 포트가 겹친다 — 먼저 내린다.
+# ⚠️ launchd 밖에서 뜬 고아 프로세스도 여기서 정리한다. 예전 래퍼가 `nohup java &`
+#    로 띄운 것이 남아 있으면 launchd 가 포트를 못 잡아 조용히 실패한다(2026-09-06 실측).
 launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
 pid="$(lsof -nP -iTCP:7777 -sTCP:LISTEN -t 2>/dev/null | head -1 || true)"
-[ -n "$pid" ] && { kill "$pid" 2>/dev/null || true; sleep 2; }
+[ -n "$pid" ] && { echo "  기존 프로세스 정리 (pid $pid)"; kill "$pid" 2>/dev/null || true; sleep 2; }
 
-launchctl bootstrap "$DOMAIN" "$PLIST"
+# ⭐ 공통 게이트. 표준 형태·기대 목록 등재 여부를 검사하고 설치·등록까지 한다.
+#    목록에 없으면 여기서 막힌다 — 감시받지 않는 에이전트를 만들지 않기 위해서다.
+"$HOME/.claude/launchd/bin/install.sh" "$RENDERED"
 
 # ⚠️ bootstrap 만으로는 시작되지 않는 경우가 있다 (runs = 0) — docs/04-배포.md 실측.
 # "등록했다"와 "돌고 있다"는 다르다. 확인하고, 아니면 kickstart 한다.
