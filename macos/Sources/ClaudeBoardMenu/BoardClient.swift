@@ -34,8 +34,19 @@ final class BoardClient: ObservableObject {
     @Published private(set) var health: Health = .disconnected
     @Published private(set) var lastError: String?
 
-    /// 답변 대기 수 — 메뉴바에 항상 보이는 유일한 값이다 (docs/00-개요.md 목표 2).
+    /// 답변 대기 수 — 메뉴바 숫자가 되는 값이다 (docs/00-개요.md 목표 2).
     var waitingCount: Int { count(of: .waiting) }
+
+    /// 멈춤 의심 수. **숫자에 합치지 않는다** (#43) — 대기와 성격이 다르다.
+    ///
+    /// `StateResolver` 기준으로 이것은 한가한 상태가 아니다:
+    /// 도구가 도는 중(`TOOL_RESULT`/`ASSISTANT_TOOL_USE`)인데 `stalledAfter`(기본 10분)
+    /// 를 넘도록 다음 턴이 안 온 세션이다. `SessionState.order` 도 대기(1) 바로 다음인
+    /// 2로 두고 있다 — **놓치면 안 되는 상태 2종 중 하나다.**
+    ///
+    /// 예전에는 메뉴바가 `waitingCount` 만 봐서, 대기 0 + 멈춤 N 이면 세션이 하나도
+    /// 없을 때와 **화면상 완전히 같았다.** 목록을 열기 전까지 알 수 없었다.
+    var stalledCount: Int { count(of: .stalled) }
 
     func count(of state: SessionState) -> Int {
         guard let snapshot else { return 0 }

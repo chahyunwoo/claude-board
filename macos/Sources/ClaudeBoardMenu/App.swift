@@ -27,9 +27,11 @@ struct ClaudeBoardMenuApp: App {
 
 /// 메뉴바에 **항상 보이는** 부분.
 ///
-/// 답변 대기 수 하나만 낸다 — 메뉴바는 좁고, 그것이 가장 높은 가치다
-/// (docs/00-개요.md 목표 2 "답변 대기 세션을 최상단에").
-/// 나머지는 눌러서 본다.
+/// **숫자는 답변 대기 하나만** 낸다 — 메뉴바는 좁고, 그것이 가장 높은 가치다
+/// (docs/00-개요.md 목표 2 "답변 대기 세션을 최상단에"). 나머지는 눌러서 본다.
+///
+/// 다만 **멈춤 의심은 모양으로 알린다** (#43). 숫자에 합치면 성격이 다른 둘이
+/// 뭉개지고, 따로 내면 폭이 는다 — 모양은 둘 다 피한다.
 private struct Label: View {
     @ObservedObject var client: BoardClient
 
@@ -45,11 +47,15 @@ private struct Label: View {
             let n = client.waitingCount
             if n > 0 {
                 HStack(spacing: 3) {
-                    Image(systemName: "circle.fill").font(.system(size: 7))
+                    Image(systemName: symbol).font(.system(size: 7))
                     Text("\(n)")
                 }
+                .help(tooltip)
             } else {
-                Image(systemName: "circle")
+                // ⚠️ 대기가 0이어도 **멈춤이 있으면 조용하지 않다** (#43).
+                // 여기서 늘 `circle` 을 내던 탓에 "대기 0 + 멈춤 N" 이
+                // 세션이 하나도 없을 때와 화면상 같았다.
+                Image(systemName: symbol).help(tooltip)
             }
         case .disconnected:
             // 연결 중 — 속이 빈 점선. "아직 모른다"를 뜻한다.
@@ -57,6 +63,31 @@ private struct Label: View {
         case .backendDown:
             Image(systemName: "circle.slash")
         }
+    }
+
+    /// 메뉴바 심볼. **판정을 여기 한 곳에 둔다** — 호출부가 조건을 풀어 쓰면
+    /// 상태를 추가할 때 그 호출부만 조용히 빠진다 (`StateResolver` 와 같은 이유).
+    ///
+    /// 숫자는 답변 대기만 센다(#43 에서 합산안을 버린 이유: 성격이 다른 둘을
+    /// 한 숫자로 뭉개면 "3" 이 대기 3인지 멈춤 3인지 알 수 없게 된다).
+    /// **멈춤은 숫자가 아니라 모양으로 알린다** — 메뉴바 폭이 늘지 않는다.
+    ///
+    /// ⚠️ 이모지를 쓰지 않는 이유는 위 주석과 같다. SF Symbol 안에서 푼다.
+    private var symbol: String {
+        if client.stalledCount > 0 {
+            // 멈춤이 있으면 대기 유무와 무관하게 이 모양이다 —
+            // 대기 0 + 멈춤 N 에서 조용해지지 않게 하는 것이 이 분기의 전부다.
+            return "exclamationmark.circle.fill"
+        }
+        return client.waitingCount > 0 ? "circle.fill" : "circle"
+    }
+
+    /// hover 로 무엇의 개수인지 알린다 — 메뉴바 폭을 늘리지 않고
+    /// "3 이 무엇의 3인가"를 푼다 (#44 의 C 안).
+    private var tooltip: String {
+        var parts: [String] = ["답변 대기 \(client.waitingCount)"]
+        if client.stalledCount > 0 { parts.append("멈춤 의심 \(client.stalledCount)") }
+        return parts.joined(separator: " · ")
     }
 }
 
