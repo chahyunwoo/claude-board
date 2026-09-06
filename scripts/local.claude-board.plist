@@ -8,7 +8,16 @@
        🔴 경로를 하드코딩하지 않는다 — 저장소 위치가 기계마다 다르다.
 
        표준 형태: 런타임 절대경로 + 대상. launchd 는 PATH 를 물려주지 않고,
-       JDK 21 은 keg-only 라 /usr/bin/java 로는 안 잡힌다 (docs/06-개발환경.md). -->
+       JDK 21 은 keg-only 라 /usr/bin/java 로는 안 잡힌다 (docs/06-개발환경.md).
+
+       🔴 **__JAR__ 은 ~/Documents 안을 가리키면 안 된다.**
+       launchd 로 뜬 java 는 ~/Documents 접근 권한(TCC)이 없고, 그게
+       **거부가 아니라 멈춤으로** 나타난다 — JVM 런처가 jar 매니페스트를 여는
+       open() 에서 무한 대기하고, 로그도 포트도 안 나온다(2026-09-06 실측, 이슈 #46).
+       install-agent.sh 가 jar 을 ~/Library/Application Support/claude-board/ 로
+       복사하고 그 경로를 여기에 넣는다.
+       ⚠️ /bin/bash 로 감싸도 소용없다 — TCC 는 실행 파일 단위라 상속되지 않는다
+          (FDA 가 있는 bash 의 자식 java 도 똑같이 멈췄다). -->
   <key>ProgramArguments</key>
   <array>
     <string>/opt/homebrew/opt/openjdk@21/bin/java</string>
@@ -42,7 +51,9 @@
   <key>StandardOutPath</key><string>__LOG__</string>
   <key>StandardErrorPath</key><string>__LOG__</string>
 
-  <!-- 데이터는 이 기계를 떠나지 않는다. 세션 기록을 읽으려면 홈이 필요하다. -->
+  <!-- 데이터는 이 기계를 떠나지 않는다. 세션 기록을 읽으려면 홈이 필요하다.
+       🔴 저장소 경로(~/Documents 아래)를 쓰지 않는다 — jar 과 같은 TCC 문제다.
+          install-agent.sh 가 $HOME 을 넣는다. -->
   <key>WorkingDirectory</key><string>__ROOT__</string>
 </dict>
 </plist>

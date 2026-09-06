@@ -31,6 +31,14 @@ LOG="$LOG_DIR/claude-board.log"
 SVC="gui/$(id -u)/local.claude-board"
 PLIST="$HOME/Library/LaunchAgents/local.claude-board.plist"
 
+# 🔴 실제로 도는 것은 저장소의 jar 이 아니라 이 **사본**이다.
+# launchd 로 뜬 java 는 ~/Documents 를 못 읽는다(TCC). 거부(EPERM)가 아니라
+# **멈춤**으로 나타나 로그도 포트도 안 나온다 — JVM 런처가 jar 매니페스트를 여는
+# open() 에서 무한 대기한다(2026-09-06 실측, 이슈 #46).
+# ⚠️ /bin/bash 로 감싸도 소용없다 — TCC 는 실행 파일 단위라 상속되지 않는다.
+# 빌드했으면 restart 로 다시 복사해야 반영된다.
+RUNTIME_JAR="$HOME/Library/Application Support/claude-board/claude-board.jar"
+
 [ -x "$JAVA" ] || JAVA="$(command -v java || true)"
 [ -n "$JAVA" ] || { echo "✗ JDK 21 을 찾지 못했다 — brew install openjdk@21" >&2; exit 1; }
 
@@ -49,6 +57,8 @@ case "${1:-start}" in
       exit 0
     fi
     [ -f "$JAR" ] || { echo "✗ jar 이 없다 — scripts/build.sh 를 먼저 돌려라" >&2; exit 1; }
+    # 런타임 사본이 없으면 launchd 가 열 것이 없다. 설치 스크립트가 만든다.
+    [ -f "$RUNTIME_JAR" ] || { echo "✗ 런타임 jar 이 없다 — scripts/install-agent.sh 를 돌려라" >&2; exit 1; }
     mkdir -p "$LOG_DIR"
     # ⚠️ bootstrap 만으로는 시작되지 않는 경우가 있다 — RunAtLoad 가 true 인데
     #    runs = 0 으로 남는다 (docs/04-배포.md 실측, 전역 launchd 표준 §5).
@@ -62,6 +72,14 @@ case "${1:-start}" in
     #        그래서 stop→start 왕복 검증만으로는 이 버그가 드러나지 않는다.)
     #    → 등록과 기동을 **따로** 한다. kickstart 는 이미 돌고 있으면 무해하다.
     launchctl bootstrap "gui/$(id -u)" "$PLIST" 2>/dev/null || true
+    # ⚠️ bootout 직후엔 잡이 아직 빠지는 중이라 bootstrap 이 **조용히 실패**한다.
+    #    등록 여부를 확인하고, 아니면 한 번 더 시도한다 — 미등록 상태로 kickstart 를
+    #    부르면 아무 일도 안 일어나고 "기동 실패"로만 끝난다(2026-09-06 실측).
+    if ! launchctl print "$SVC" >/dev/null 2>&1; then
+      sleep 2
+      launchctl bootstrap "gui/$(id -u)" "$PLIST" \
+        || { echo "✗ launchd 등록 실패 — launchctl bootstrap 오류를 확인해라" >&2; exit 1; }
+    fi
     launchctl kickstart "$SVC" >/dev/null 2>&1 || true
     for _ in $(seq 1 15); do pid="$(running_pid)"; [ -n "$pid" ] && break; sleep 1; done
     [ -n "$pid" ] || { echo "✗ 기동 실패 — $LOG 를 봐라" >&2; tail -5 "$LOG" >&2; exit 1; }
@@ -71,11 +89,20 @@ case "${1:-start}" in
     pid="$(running_pid)"
     # bootout 해야 멈춘다. kill 만 하면 KeepAlive 가 즉시 다시 띄운다.
     launchctl bootout "$SVC" 2>/dev/null || true
+    # bootout 은 비동기다. 완전히 빠질 때까지 기다린다 —
+    # 안 기다리면 곧바로 오는 start 의 bootstrap 이 실패한다.
+    for _ in $(seq 1 10); do launchctl print "$SVC" >/dev/null 2>&1 || break; sleep 1; done
     [ -n "$pid" ] && echo "✓ 내렸다 (pid $pid)" || echo "떠 있지 않다"
     ;;
   restart)
     "$0" stop
     sleep 2
+    # ⚠️ 런타임 jar 은 사본이라 빌드해도 자동으로 안 바뀐다. 여기서 다시 복사한다 —
+    #    빠뜨리면 "빌드했는데 안 바뀐다" 가 되고, 원인이 안 보인다.
+    if [ -f "$JAR" ]; then
+      mkdir -p "$(dirname "$RUNTIME_JAR")"
+      cp "$JAR" "$RUNTIME_JAR" && echo "✓ jar 갱신 ($(date -r "$JAR" '+%m-%d %H:%M'))"
+    fi
     "$0" start
     ;;
   status)
@@ -84,7 +111,10 @@ case "${1:-start}" in
       echo "떠 있다 (pid $pid)"
       # 바인딩이 127.0.0.1 인지 함께 보인다 — 이 도구의 절대 원칙이다
       lsof -nP -iTCP:"$PORT" -sTCP:LISTEN | tail -n +2
-      echo "jar: $(date -r "$JAR" '+%Y-%m-%d %H:%M')  (이보다 최근에 고쳤다면 restart)"
+      echo "저장소 jar: $(date -r "$JAR" '+%Y-%m-%d %H:%M')"
+      echo "런타임 jar: $(date -r "$RUNTIME_JAR" '+%Y-%m-%d %H:%M')  ← 실제로 도는 것"
+      # 사본이라 어긋날 수 있다. 조용히 옛 jar 이 도는 것을 막는다.
+      [ "$JAR" -nt "$RUNTIME_JAR" ] && echo "⚠️ 저장소 jar 이 더 최근이다 — claude-board restart 로 반영한다"
     else
       echo "떠 있지 않다"
     fi

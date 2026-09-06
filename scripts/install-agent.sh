@@ -12,6 +12,12 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LABEL="local.claude-board"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 JAR="$ROOT/build/libs/claude-board.jar"
+
+# 🔴 launchd 로 뜬 java 는 ~/Documents 를 못 읽는다(TCC). 거부가 아니라 **멈춤**으로
+#    나타나서 로그도 포트도 안 나온다 — 2026-09-06 실측, 이슈 #46.
+#    그래서 jar 을 TCC 밖으로 복사해 그 사본을 돌린다. 빌드 산출물은 저장소에 그대로 둔다.
+RUNTIME_DIR="$HOME/Library/Application Support/claude-board"
+RUNTIME_JAR="$RUNTIME_DIR/claude-board.jar"
 LOG="$HOME/Library/Logs/claude-board/claude-board.log"
 DOMAIN="gui/$(id -u)"
 
@@ -31,10 +37,14 @@ CLAUDE_BIN="$(command -v claude || true)"
 AGENT_PATH="$(dirname "$CLAUDE_BIN"):/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 # 저장소의 템플릿을 렌더링한다. 렌더링본을 공통 게이트에 넘기고, 게이트가 설치한다.
+# jar 을 런타임 위치로 복사한다. 여기서 빠뜨리면 옛 jar 이 계속 돈다.
+mkdir -p "$RUNTIME_DIR"
+cp "$JAR" "$RUNTIME_JAR" && echo "  ✓ jar → $RUNTIME_JAR"
+
 RENDER_DIR="$(mktemp -d)"
 RENDERED="$RENDER_DIR/$LABEL.plist"
 trap 'rm -rf "$RENDER_DIR"' EXIT
-sed -e "s|__JAR__|$JAR|" -e "s|__LOG__|$LOG|" -e "s|__ROOT__|$ROOT|" \
+sed -e "s|__JAR__|$RUNTIME_JAR|" -e "s|__LOG__|$LOG|" -e "s|__ROOT__|$HOME|" \
     -e "s|__PATH__|$AGENT_PATH|" \
     "$ROOT/scripts/$LABEL.plist" > "$RENDERED"
 
