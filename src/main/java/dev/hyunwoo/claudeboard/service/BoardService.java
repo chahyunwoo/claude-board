@@ -1,11 +1,6 @@
 package dev.hyunwoo.claudeboard.service;
 
 import dev.hyunwoo.claudeboard.domain.BoardSnapshot;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Service;
-
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -13,17 +8,20 @@ import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
 
 /**
  * 백그라운드로 수집해 캐시한다. <b>요청은 이 캐시만 읽는다.</b>
  *
- * <p>왜 캐시인가 — 전체 수집 285ms 중 <b>~200ms 가 {@code claude agents --json}
- * 서브프로세스</b>(Node CLI 부팅)라 이 저장소 밖에 있다. 역순 리더는 이미 전체 파싱 대비
- * 15.9배 빠르므로 더 조여도 소용없다. 수집을 요청 경로에서 빼내야 체감 지연이 사라진다.
- * docs/02-백엔드.md "전체 갱신 200ms — 병목은 이 저장소 밖에 있다".
+ * <p>왜 캐시인가 — 전체 수집 285ms 중 <b>~200ms 가 {@code claude agents --json} 서브프로세스</b>(Node CLI 부팅)라 이 저장소
+ * 밖에 있다. 역순 리더는 이미 전체 파싱 대비 15.9배 빠르므로 더 조여도 소용없다. 수집을 요청 경로에서 빼내야 체감 지연이 사라진다. docs/02-백엔드.md "전체
+ * 갱신 200ms — 병목은 이 저장소 밖에 있다".
  *
- * <p>수집 실패는 <b>캐시를 덮지 않는다</b> — 마지막 성공 결과를 계속 내보내는 편이
- * 화면을 비우는 것보다 낫다. 다만 그 사실은 {@code errors} 로 노출한다.
+ * <p>수집 실패는 <b>캐시를 덮지 않는다</b> — 마지막 성공 결과를 계속 내보내는 편이 화면을 비우는 것보다 낫다. 다만 그 사실은 {@code errors} 로
+ * 노출한다.
  */
 @Service
 public class BoardService {
@@ -39,8 +37,8 @@ public class BoardService {
     /**
      * 새 스냅샷을 받을 구독자들.
      *
-     * <p>{@link CopyOnWriteArrayList} 인 이유: 순회(수집 스레드)와 등록·해제(요청 스레드)가
-     * 동시에 일어난다. 순회 중 변경으로 인한 예외를 피하면서 락을 잡지 않는다.
+     * <p>{@link CopyOnWriteArrayList} 인 이유: 순회(수집 스레드)와 등록·해제(요청 스레드)가 동시에 일어난다. 순회 중 변경으로 인한 예외를
+     * 피하면서 락을 잡지 않는다.
      */
     private final List<Consumer<BoardSnapshot>> listeners = new CopyOnWriteArrayList<>();
 
@@ -52,9 +50,8 @@ public class BoardService {
     /**
      * 캐시를 읽는다.
      *
-     * <p>첫 수집 전이면 <b>기다리지 않고</b> 빈 스냅샷을 준다 — 요청 경로에서 수집을 하면
-     * 캐시를 둔 의미가 사라진다. {@code errors} 에 그 사실을 적어
-     * "세션이 없다"와 구별되게 한다.
+     * <p>첫 수집 전이면 <b>기다리지 않고</b> 빈 스냅샷을 준다 — 요청 경로에서 수집을 하면 캐시를 둔 의미가 사라진다. {@code errors} 에 그 사실을
+     * 적어 "세션이 없다"와 구별되게 한다.
      */
     public BoardSnapshot snapshot() {
         BoardSnapshot cached = cache.get();
@@ -80,8 +77,7 @@ public class BoardService {
     /**
      * 구독을 등록하고, 해제하는 함수를 돌려준다.
      *
-     * <p>해제 수단을 <b>등록과 같은 자리에서</b> 돌려주는 이유는 해제를 빠뜨리기 어렵게
-     * 만들기 위해서다 — emitter 누수는 예외를 내지 않고 조용히 쌓인다.
+     * <p>해제 수단을 <b>등록과 같은 자리에서</b> 돌려주는 이유는 해제를 빠뜨리기 어렵게 만들기 위해서다 — emitter 누수는 예외를 내지 않고 조용히 쌓인다.
      */
     public Runnable subscribe(Consumer<BoardSnapshot> listener) {
         listeners.add(listener);
@@ -96,8 +92,8 @@ public class BoardService {
     /**
      * 구독자에게 돌린다.
      *
-     * <p>한 구독자가 던져도 <b>나머지에게는 간다</b> — 끊긴 연결 하나가 전체 통지를
-     * 막으면 안 된다. 던진 구독자의 정리는 그쪽 책임이다(등록 시 받은 해제 함수).
+     * <p>한 구독자가 던져도 <b>나머지에게는 간다</b> — 끊긴 연결 하나가 전체 통지를 막으면 안 된다. 던진 구독자의 정리는 그쪽 책임이다(등록 시 받은 해제
+     * 함수).
      */
     private void publish(BoardSnapshot snapshot) {
         for (Consumer<BoardSnapshot> listener : listeners) {
@@ -115,7 +111,7 @@ public class BoardService {
         for (var state : dev.hyunwoo.claudeboard.domain.SessionState.values()) {
             counts.put(state.name().toLowerCase(), 0);
         }
-        return new BoardSnapshot(Instant.now(clock), 0, List.of(), counts,
-                List.of("첫 수집이 아직 끝나지 않았습니다"));
+        return new BoardSnapshot(
+                Instant.now(clock), 0, List.of(), counts, List.of("첫 수집이 아직 끝나지 않았습니다"));
     }
 }

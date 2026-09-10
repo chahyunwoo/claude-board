@@ -2,23 +2,20 @@ package dev.hyunwoo.claudeboard.collect;
 
 import dev.hyunwoo.claudeboard.domain.SessionState;
 import dev.hyunwoo.claudeboard.domain.TranscriptInfo.RecordKind;
-
 import java.time.Duration;
 import java.time.Instant;
 
 /**
- * 상태 판별. <b>이 도구의 가치 전부가 여기 걸려 있다.</b>
- * docs/01-데이터.md "상태 판별 규칙", docs/05-검증.md 1번.
+ * 상태 판별. <b>이 도구의 가치 전부가 여기 걸려 있다.</b> docs/01-데이터.md "상태 판별 규칙", docs/05-검증.md 1번.
  *
- * <p>판정은 반드시 {@link #resolve} 한 곳을 통한다. 호출부가 조건을 풀어 쓰면
- * 규칙이 바뀔 때 그 호출부만 조용히 빠진다 — 로그가 필요하면 결과를 받아 호출부에서 남긴다.
+ * <p>판정은 반드시 {@link #resolve} 한 곳을 통한다. 호출부가 조건을 풀어 쓰면 규칙이 바뀔 때 그 호출부만 조용히 빠진다 — 로그가 필요하면 결과를 받아
+ * 호출부에서 남긴다.
  *
  * <p>시각은 주입받는다({@code now}). 그래야 임계 판정을 테스트에서 결정적으로 검사할 수 있다.
  *
- * <p><b>종료 상태를 다루지 않는다</b> (#17). 이전에는 {@code alive} 를 받아
- * {@code ENDED} 를 냈지만, {@code Aggregator} 가 살아있는 세션만 순회하므로
- * 그 분기는 <b>실전에서 도달 불가능</b>했다 — 단위 테스트에서만 닿는 죽은 코드였다.
- * 지금은 살아있는 세션만 받고, 호출부가 pid 없는 항목을 걸러낸다.
+ * <p><b>종료 상태를 다루지 않는다</b> (#17). 이전에는 {@code alive} 를 받아 {@code ENDED} 를 냈지만, {@code Aggregator} 가
+ * 살아있는 세션만 순회하므로 그 분기는 <b>실전에서 도달 불가능</b>했다 — 단위 테스트에서만 닿는 죽은 코드였다. 지금은 살아있는 세션만 받고, 호출부가 pid 없는
+ * 항목을 걸러낸다.
  *
  * <p>Spring 에 의존하지 않는 순수 자바다.
  */
@@ -43,19 +40,15 @@ public final class StateResolver {
     /**
      * 상태를 판정한다.
      *
-     * <p><b>살아있는 세션만 받는다.</b> 종료된 세션은 상태를 갖지 않는다 (#17) —
-     * <b>호출부가 pid 없는 항목을 미리 걸러야 한다.</b>
+     * <p><b>살아있는 세션만 받는다.</b> 종료된 세션은 상태를 갖지 않는다 (#17) — <b>호출부가 pid 없는 항목을 미리 걸러야 한다.</b>
      *
-     * <p>여기서 검사하지 않는 이유: 이 클래스는 "마지막 레코드와 시각으로 상태를 정한다"만
-     * 하고, "그 세션이 살아있는가"는 {@code Aggregator} 가 아는 사실이다.
-     * 다만 <b>걸러지지 않은 죽은 세션이 들어오면 조용히 {@code WORKING} 이 된다</b> —
-     * 예외로 막아주지 않으므로, 새 호출부를 만들 때 필터를 빠뜨리면
-     * <b>죽은 세션이 "작업 중"으로 표시되어 도구가 거짓말을 한다.</b>
-     * 그 필터가 실제로 걸려 있는지는 {@code AggregatorTest} 가 지킨다.
+     * <p>여기서 검사하지 않는 이유: 이 클래스는 "마지막 레코드와 시각으로 상태를 정한다"만 하고, "그 세션이 살아있는가"는 {@code Aggregator} 가 아는
+     * 사실이다. 다만 <b>걸러지지 않은 죽은 세션이 들어오면 조용히 {@code WORKING} 이 된다</b> — 예외로 막아주지 않으므로, 새 호출부를 만들 때 필터를
+     * 빠뜨리면 <b>죽은 세션이 "작업 중"으로 표시되어 도구가 거짓말을 한다.</b> 그 필터가 실제로 걸려 있는지는 {@code AggregatorTest} 가 지킨다.
      *
      * @param lastRecordKind 세션 기록 끝에서 찾은 마지막 대화 레코드의 종류
      * @param lastActivityAt 그 레코드의 시각. null 이면 임계 판정을 하지 않는다
-     * @param now            현재 시각 (주입)
+     * @param now 현재 시각 (주입)
      */
     public SessionState resolve(RecordKind lastRecordKind, Instant lastActivityAt, Instant now) {
         Duration quiet = quietFor(lastActivityAt, now);
@@ -76,8 +69,7 @@ public final class StateResolver {
         // 앞의 것을 사용자 입력으로, 뒤의 것을 답변 완료로 오인하면
         // "작업 중"과 "답변 대기"가 정확히 뒤바뀐다.
         // docs/05-검증.md 단위테스트 ②가 지키는 지점이다.
-        if (isInProgress(lastRecordKind)
-                && quiet != null && quiet.compareTo(stalledAfter) > 0) {
+        if (isInProgress(lastRecordKind) && quiet != null && quiet.compareTo(stalledAfter) > 0) {
             return SessionState.STALLED;
         }
 
@@ -94,8 +86,7 @@ public final class StateResolver {
     /**
      * 도구가 도는 중인가 — 사용자를 기다리는 것이 아니라 진행 중인가.
      *
-     * <p>판정은 이 헬퍼 한 곳을 통한다. 호출부가 조건을 풀어 쓰면
-     * 새 종류를 추가할 때 그 호출부만 조용히 빠진다.
+     * <p>판정은 이 헬퍼 한 곳을 통한다. 호출부가 조건을 풀어 쓰면 새 종류를 추가할 때 그 호출부만 조용히 빠진다.
      */
     private static boolean isInProgress(RecordKind kind) {
         return kind == RecordKind.TOOL_RESULT || kind == RecordKind.ASSISTANT_TOOL_USE;

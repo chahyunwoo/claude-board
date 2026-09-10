@@ -13,8 +13,8 @@ import java.util.stream.Stream;
 /**
  * {@code ~/.claude/projects/} 아래에서 세션 기록 파일을 찾는다.
  *
- * <p><b>경로 인코딩 규칙에 의존하지 않는다.</b> {@code sessionId} 로 글롭 탐색한다 —
- * 하이픈 치환 규칙이 바뀌어도 안전하다. docs/01-데이터.md "소스 B".
+ * <p><b>경로 인코딩 규칙에 의존하지 않는다.</b> {@code sessionId} 로 글롭 탐색한다 — 하이픈 치환 규칙이 바뀌어도 안전하다. docs/01-데이터.md
+ * "소스 B".
  *
  * <p>Spring 에 의존하지 않는 순수 자바다.
  */
@@ -33,8 +33,7 @@ public final class SessionFiles {
     /**
      * 모든 세션 기록 파일. {@code sessionId -> 파일 경로}.
      *
-     * <p>같은 sessionId 가 여러 디렉터리에 있으면 가장 최근에 수정된 것을 쓴다
-     * (worktree 등으로 경로가 갈릴 수 있다).
+     * <p>같은 sessionId 가 여러 디렉터리에 있으면 가장 최근에 수정된 것을 쓴다 (worktree 등으로 경로가 갈릴 수 있다).
      */
     public Map<String, Path> bySessionId() throws IOException {
         Map<String, Path> found = new HashMap<>();
@@ -45,10 +44,11 @@ public final class SessionFiles {
         try (Stream<Path> stream = Files.walk(projectsRoot, 2)) {
             stream.filter(p -> p.getFileName().toString().endsWith(".jsonl"))
                     .filter(Files::isRegularFile)
-                    .forEach(p -> {
-                        String id = stripExtension(p.getFileName().toString());
-                        found.merge(id, p, SessionFiles::newerOf);
-                    });
+                    .forEach(
+                            p -> {
+                                String id = stripExtension(p.getFileName().toString());
+                                found.merge(id, p, SessionFiles::newerOf);
+                            });
         }
         return found;
     }
@@ -67,10 +67,11 @@ public final class SessionFiles {
         try (Stream<Path> dirs = Files.list(projectsRoot)) {
             for (Path dir : dirs.filter(Files::isDirectory).toList()) {
                 try (Stream<Path> files = Files.list(dir)) {
-                    List<Path> sessions = new ArrayList<>(files
-                            .filter(p -> p.getFileName().toString().endsWith(".jsonl"))
-                            .filter(Files::isRegularFile)
-                            .toList());
+                    List<Path> sessions =
+                            new ArrayList<>(
+                                    files.filter(p -> p.getFileName().toString().endsWith(".jsonl"))
+                                            .filter(Files::isRegularFile)
+                                            .toList());
                     sessions.sort(Comparator.comparingLong(SessionFiles::modifiedAt));
                     if (!sessions.isEmpty()) {
                         grouped.put(dir, sessions);

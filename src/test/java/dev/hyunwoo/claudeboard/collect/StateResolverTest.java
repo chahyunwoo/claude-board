@@ -1,13 +1,12 @@
 package dev.hyunwoo.claudeboard.collect;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.hyunwoo.claudeboard.domain.SessionState;
 import dev.hyunwoo.claudeboard.domain.TranscriptInfo.RecordKind;
-import org.junit.jupiter.api.Test;
-
 import java.time.Duration;
 import java.time.Instant;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 /**
  * 상태 판별 테스트. docs/05-검증.md 1번 "반드시 넣을 단위 테스트".
@@ -46,8 +45,7 @@ class StateResolverTest {
     /**
      * <b>이 테스트가 이 클래스에서 가장 중요하다.</b>
      *
-     * <p>도구 결과는 {@code type: "user"} 로 기록된다. 이걸 사용자 입력으로 오인하면
-     * "작업 중"과 "답변 대기"가 정확히 반대로 나온다.
+     * <p>도구 결과는 {@code type: "user"} 로 기록된다. 이걸 사용자 입력으로 오인하면 "작업 중"과 "답변 대기"가 정확히 반대로 나온다.
      */
     @Test
     void 마지막이_tool_result_이고_최근이면_작업_중이지_답변_대기가_아니다() {
@@ -60,9 +58,8 @@ class StateResolverTest {
     }
 
     /**
-     * 실측(2026-09-03)으로 드러난 케이스. 살아있는 세션 13개 중 2개가 이 형태였고
-     * 둘 다 실제로 작업 중이었는데, 초안 규칙(마지막=assistant → 답변 대기)은
-     * 이 둘을 "답변 대기"로 오보했다.
+     * 실측(2026-09-03)으로 드러난 케이스. 살아있는 세션 13개 중 2개가 이 형태였고 둘 다 실제로 작업 중이었는데, 초안 규칙(마지막=assistant → 답변
+     * 대기)은 이 둘을 "답변 대기"로 오보했다.
      */
     @Test
     void 마지막이_assistant_인데_tool_use_로_끝나면_작업_중이지_답변_대기가_아니다() {
@@ -108,16 +105,13 @@ class StateResolverTest {
     /**
      * 사용자 입력 뒤 오래 조용한 것과 도구 결과 뒤 오래 조용한 것은 다르다.
      *
-     * <p>도구 결과 뒤 정적은 "다음 턴이 안 온다"(멈춤 의심)이지만,
-     * 사용자 입력 뒤 오래 조용한 것은 그냥 유휴다.
+     * <p>도구 결과 뒤 정적은 "다음 턴이 안 온다"(멈춤 의심)이지만, 사용자 입력 뒤 오래 조용한 것은 그냥 유휴다.
      */
     @Test
     void 사용자_입력_뒤_오래_조용하면_멈춤이_아니라_유휴다() {
         SessionState state = resolver.resolve(RecordKind.USER, minutesAgo(60 * 3), NOW);
 
-        assertThat(state)
-                .isEqualTo(SessionState.IDLE)
-                .isNotEqualTo(SessionState.STALLED);
+        assertThat(state).isEqualTo(SessionState.IDLE).isNotEqualTo(SessionState.STALLED);
     }
 
     // ── 경계·이상값 ────────────────────────────────────────────────────

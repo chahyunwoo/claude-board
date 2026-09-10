@@ -1,37 +1,33 @@
 package dev.hyunwoo.claudeboard.collect;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.hyunwoo.claudeboard.domain.BoardSnapshot;
 import dev.hyunwoo.claudeboard.domain.Project;
 import dev.hyunwoo.claudeboard.domain.Session;
 import dev.hyunwoo.claudeboard.domain.SessionState;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-/**
- * 집계 테스트. 실제 파일과 가짜 agents 출력을 물려 end-to-end 로 확인한다.
- */
+/** 집계 테스트. 실제 파일과 가짜 agents 출력을 물려 end-to-end 로 확인한다. */
 class AggregatorTest {
 
     private static final Instant NOW = Instant.parse("2026-09-03T12:00:00Z");
 
-    @TempDir
-    Path tmp;
+    @TempDir Path tmp;
 
     /**
      * {@code claude agents --json} 대신 주어진 JSON 을 뱉는 명령을 물린다.
      *
-     * <p>{@code AgentsReader} 를 흉내내지 않고 <b>실제 ProcessBuilder 경로를 그대로 태운다</b> —
-     * 그래야 실행·파싱 배선까지 함께 검사된다.
+     * <p>{@code AgentsReader} 를 흉내내지 않고 <b>실제 ProcessBuilder 경로를 그대로 태운다</b> — 그래야 실행·파싱 배선까지 함께
+     * 검사된다.
      */
     private static AgentsReader fakeAgents(String json) {
         return new AgentsReader(new ObjectMapper(), List.of("printf", "%s", json));
@@ -47,10 +43,13 @@ class AggregatorTest {
     }
 
     /** {@code ~/.claude/projects/<인코딩된경로>/<sessionId>.jsonl} 구조를 흉내낸다. */
-    private void writeTranscript(String dirName, String sessionId, String... lines) throws IOException {
+    private void writeTranscript(String dirName, String sessionId, String... lines)
+            throws IOException {
         Path dir = Files.createDirectories(tmp.resolve(dirName));
-        Files.writeString(dir.resolve(sessionId + ".jsonl"),
-                String.join("\n", lines) + "\n", StandardCharsets.UTF_8);
+        Files.writeString(
+                dir.resolve(sessionId + ".jsonl"),
+                String.join("\n", lines) + "\n",
+                StandardCharsets.UTF_8);
     }
 
     private static String assistantWithUsage(long input, long cacheRead, String ts) {
@@ -67,15 +66,13 @@ class AggregatorTest {
     /**
      * <b>pid 없는 항목은 스냅샷에 들어오지 않는다.</b>
      *
-     * <p>이 보드는 살아있는 세션만 다룬다 — 종료된 세션에는 줄 상태가 없다.
-     * 이 가드가 없으면 죽은 세션이 {@code WORKING} 으로 분류되어
-     * <b>화면이 "작업 중"이라고 거짓말을 한다.</b>
+     * <p>이 보드는 살아있는 세션만 다룬다 — 종료된 세션에는 줄 상태가 없다. 이 가드가 없으면 죽은 세션이 {@code WORKING} 으로 분류되어 <b>화면이
+     * "작업 중"이라고 거짓말을 한다.</b>
      *
-     * <p>{@code StateResolver} 에서 {@code ENDED} 분기를 걷어냈으므로(#17)
-     * 이 필터가 그 역할을 대신한다. 필터를 지우면 이 테스트가 빨개져야 한다.
+     * <p>{@code StateResolver} 에서 {@code ENDED} 분기를 걷어냈으므로(#17) 이 필터가 그 역할을 대신한다. 필터를 지우면 이 테스트가
+     * 빨개져야 한다.
      *
-     * <p>걸러낸 것을 {@code errors} 에 싣지 않는 것도 함께 검사한다 —
-     * 그 채널은 "읽지 못했다"를 알리는 곳이라 정상 동작을 실으면 거짓 경보가 된다.
+     * <p>걸러낸 것을 {@code errors} 에 싣지 않는 것도 함께 검사한다 — 그 채널은 "읽지 못했다"를 알리는 곳이라 정상 동작을 실으면 거짓 경보가 된다.
      */
     @Test
     void pid_없는_항목은_스냅샷에서_제외된다() throws IOException {
@@ -83,14 +80,16 @@ class AggregatorTest {
         writeTranscript("-p-dead", "dead-1", assistantWithUsage(100, 0, "2026-09-03T11:59:00Z"));
 
         // pid 0 = claude agents 가 pid 를 주지 않은 항목 (AgentsReader 의 asLong(0) 기본값)
-        BoardSnapshot snapshot = aggregator("""
+        BoardSnapshot snapshot =
+                aggregator(
+                                """
                 [{"sessionId":"live-1","pid":1234,"cwd":"/p/live"},
-                 {"sessionId":"dead-1","pid":0,"cwd":"/p/dead"}]""", 1_000_000L)
-                .collect(NOW);
+                 {"sessionId":"dead-1","pid":0,"cwd":"/p/dead"}]""",
+                                1_000_000L)
+                        .collect(NOW);
 
-        List<String> ids = snapshot.projects().stream()
-                .map(project -> project.current().sessionId())
-                .toList();
+        List<String> ids =
+                snapshot.projects().stream().map(project -> project.current().sessionId()).toList();
         assertThat(ids).containsExactly("live-1").doesNotContain("dead-1");
 
         // errors 에 넣지 않는다 — 그 채널은 "읽지 못했다"를 알리는 곳이고 화면에서
@@ -102,13 +101,11 @@ class AggregatorTest {
     /**
      * <b>{@code StateResolver.resolve} 의 프로덕션 호출부가 하나뿐인지 센다.</b>
      *
-     * <p>{@code resolve} 는 <b>죽은 세션이 들어와도 예외를 던지지 않고</b> 조용히
-     * {@code WORKING} 을 낸다 — pid 필터는 호출부의 책임이다. 그래서 새 호출부가
-     * 생기면서 필터를 빠뜨리면 <b>죽은 세션이 "작업 중"으로 표시된다.</b>
+     * <p>{@code resolve} 는 <b>죽은 세션이 들어와도 예외를 던지지 않고</b> 조용히 {@code WORKING} 을 낸다 — pid 필터는 호출부의
+     * 책임이다. 그래서 새 호출부가 생기면서 필터를 빠뜨리면 <b>죽은 세션이 "작업 중"으로 표시된다.</b>
      *
-     * <p>문서로만 적어두면 다음 세션에서 조용히 스킵된다. 호출부 <b>개수</b>를 세어
-     * 새 호출부가 생기는 순간 이 테스트가 빨개지게 한다 — 그때 그 호출부도
-     * pid 를 거르는지 확인하고 이 숫자를 올린다.
+     * <p>문서로만 적어두면 다음 세션에서 조용히 스킵된다. 호출부 <b>개수</b>를 세어 새 호출부가 생기는 순간 이 테스트가 빨개지게 한다 — 그때 그 호출부도 pid
+     * 를 거르는지 확인하고 이 숫자를 올린다.
      *
      * <p>작업협약: "가드를 만들었으면 그 가드가 실제로 불리는가를 센다."
      */
@@ -116,24 +113,33 @@ class AggregatorTest {
     void resolve_의_프로덕션_호출부는_하나뿐이다() throws IOException {
         Path mainJava = Path.of("src/main/java");
         try (var paths = Files.walk(mainJava)) {
-            List<String> callSites = paths
-                    .filter(path -> path.toString().endsWith(".java"))
-                    .flatMap(path -> {
-                        try {
-                            String src = Files.readString(path, StandardCharsets.UTF_8);
-                            return src.lines()
-                                    .filter(line -> line.contains("stateResolver.resolve(")
-                                            || line.contains("Resolver().resolve("))
-                                    .map(line -> path.getFileName() + ": " + line.strip());
-                        } catch (IOException e) {
-                            throw new IllegalStateException("소스를 읽지 못함: " + path, e);
-                        }
-                    })
-                    .toList();
+            List<String> callSites =
+                    paths.filter(path -> path.toString().endsWith(".java"))
+                            .flatMap(
+                                    path -> {
+                                        try {
+                                            String src =
+                                                    Files.readString(path, StandardCharsets.UTF_8);
+                                            return src.lines()
+                                                    .filter(
+                                                            line ->
+                                                                    line.contains(
+                                                                                    "stateResolver.resolve(")
+                                                                            || line.contains(
+                                                                                    "Resolver().resolve("))
+                                                    .map(
+                                                            line ->
+                                                                    path.getFileName()
+                                                                            + ": "
+                                                                            + line.strip());
+                                        } catch (IOException e) {
+                                            throw new IllegalStateException(
+                                                    "소스를 읽지 못함: " + path, e);
+                                        }
+                                    })
+                            .toList();
 
-            assertThat(callSites)
-                    .as("새 호출부가 생겼다면 그쪽도 pid 를 거르는지 확인하고 이 숫자를 올려라")
-                    .hasSize(1);
+            assertThat(callSites).as("새 호출부가 생겼다면 그쪽도 pid 를 거르는지 확인하고 이 숫자를 올려라").hasSize(1);
             assertThat(callSites.get(0)).contains("Aggregator.java");
         }
     }
@@ -143,10 +149,12 @@ class AggregatorTest {
     void 살아있는_세션의_pid_는_그대로_나온다() throws IOException {
         writeTranscript("-p-live", "live-1", assistantWithUsage(100, 0, "2026-09-03T11:59:00Z"));
 
-        BoardSnapshot snapshot = aggregator(
-                """
-                [{"sessionId":"live-1","pid":4242,"cwd":"/p/live"}]""", 1_000_000L)
-                .collect(NOW);
+        BoardSnapshot snapshot =
+                aggregator(
+                                """
+                [{"sessionId":"live-1","pid":4242,"cwd":"/p/live"}]""",
+                                1_000_000L)
+                        .collect(NOW);
 
         assertThat(snapshot.projects()).hasSize(1);
         assertThat(snapshot.projects().get(0).current().pid()).isEqualTo(4242L);
@@ -155,18 +163,21 @@ class AggregatorTest {
     // ── 컨텍스트 상한 자동 상향 ─────────────────────────────────────────
 
     /**
-     * 세션 기록의 모델명이 {@code claude-opus-5} 로만 남아 {@code [1m]} 변형이 구분되지 않는다.
-     * 그래서 <b>관측값이 기본 상한을 넘으면 상한을 올린다</b>.
-     * docs/00-개요.md 결정사항 3.
+     * 세션 기록의 모델명이 {@code claude-opus-5} 로만 남아 {@code [1m]} 변형이 구분되지 않는다. 그래서 <b>관측값이 기본 상한을 넘으면 상한을
+     * 올린다</b>. docs/00-개요.md 결정사항 3.
      */
     @Test
     void 관측_토큰이_기본_상한을_넘으면_상한을_자동으로_올린다() throws IOException {
-        writeTranscript("-Users-me-proj", "s1",
-                assistantWithUsage(0, 1_200_000, "2026-09-03T11:59:00Z"));
+        writeTranscript(
+                "-Users-me-proj", "s1", assistantWithUsage(0, 1_200_000, "2026-09-03T11:59:00Z"));
 
-        BoardSnapshot snap = aggregator("""
+        BoardSnapshot snap =
+                aggregator(
+                                """
                 [{"pid":100,"cwd":"/Users/me/proj","sessionId":"s1","name":"proj-a"}]
-                """, 1_000_000L).collect(NOW);
+                """,
+                                1_000_000L)
+                        .collect(NOW);
 
         Session s = snap.projects().get(0).current();
         assertThat(s.contextTokens()).isEqualTo(1_200_000);
@@ -178,12 +189,16 @@ class AggregatorTest {
 
     @Test
     void 관측_토큰이_상한_미만이면_기본_상한을_유지한다() throws IOException {
-        writeTranscript("-Users-me-proj", "s1",
-                assistantWithUsage(0, 450_000, "2026-09-03T11:59:00Z"));
+        writeTranscript(
+                "-Users-me-proj", "s1", assistantWithUsage(0, 450_000, "2026-09-03T11:59:00Z"));
 
-        BoardSnapshot snap = aggregator("""
+        BoardSnapshot snap =
+                aggregator(
+                                """
                 [{"pid":100,"cwd":"/Users/me/proj","sessionId":"s1","name":"proj-a"}]
-                """, 1_000_000L).collect(NOW);
+                """,
+                                1_000_000L)
+                        .collect(NOW);
 
         Session s = snap.projects().get(0).current();
         assertThat(s.contextLimit()).isEqualTo(1_000_000);
@@ -192,21 +207,22 @@ class AggregatorTest {
 
     // ── 프로젝트 집계 ───────────────────────────────────────────────────
 
-    /**
-     * 한 프로젝트에 세션이 여러 개 동시에 살아있을 수 있다 —
-     * 가장 최근 것을 현재로 삼고 나머지는 접는다.
-     */
+    /** 한 프로젝트에 세션이 여러 개 동시에 살아있을 수 있다 — 가장 최근 것을 현재로 삼고 나머지는 접는다. */
     @Test
     void 한_프로젝트에_세션이_여럿이면_최근_것이_현재고_나머지는_others_다() throws IOException {
-        writeTranscript("-Users-me-proj", "old",
-                assistantWithUsage(0, 100, "2026-09-03T09:00:00Z"));
-        writeTranscript("-Users-me-proj", "recent",
-                assistantWithUsage(0, 200, "2026-09-03T11:50:00Z"));
+        writeTranscript(
+                "-Users-me-proj", "old", assistantWithUsage(0, 100, "2026-09-03T09:00:00Z"));
+        writeTranscript(
+                "-Users-me-proj", "recent", assistantWithUsage(0, 200, "2026-09-03T11:50:00Z"));
 
-        BoardSnapshot snap = aggregator("""
+        BoardSnapshot snap =
+                aggregator(
+                                """
                 [{"pid":1,"cwd":"/Users/me/proj","sessionId":"old","name":"a"},
                  {"pid":2,"cwd":"/Users/me/proj","sessionId":"recent","name":"b"}]
-                """, 1_000_000L).collect(NOW);
+                """,
+                                1_000_000L)
+                        .collect(NOW);
 
         assertThat(snap.projects()).hasSize(1);
         Project p = snap.projects().get(0);
@@ -218,18 +234,23 @@ class AggregatorTest {
     @Test
     void 답변_대기_프로젝트가_최상단으로_정렬된다() throws IOException {
         // working: 도구 결과가 방금 돌아온 세션
-        writeTranscript("-Users-me-busy", "w1",
+        writeTranscript(
+                "-Users-me-busy",
+                "w1",
                 """
                 {"type":"user","timestamp":"2026-09-03T11:59:30Z","gitBranch":"main",\
                 "message":{"content":[{"type":"tool_result","tool_use_id":"x","content":"결과"}]}}""");
         // waiting: assistant 가 text 로 끝난 세션
-        writeTranscript("-Users-me-idle", "a1",
-                assistantWithUsage(0, 100, "2026-09-03T11:00:00Z"));
+        writeTranscript("-Users-me-idle", "a1", assistantWithUsage(0, 100, "2026-09-03T11:00:00Z"));
 
-        BoardSnapshot snap = aggregator("""
+        BoardSnapshot snap =
+                aggregator(
+                                """
                 [{"pid":1,"cwd":"/Users/me/busy","sessionId":"w1","name":"busy"},
                  {"pid":2,"cwd":"/Users/me/idle","sessionId":"a1","name":"idle"}]
-                """, 1_000_000L).collect(NOW);
+                """,
+                                1_000_000L)
+                        .collect(NOW);
 
         assertThat(snap.projects())
                 .as("답변 대기가 가장 높은 가치다 — 최상단이어야 한다")
@@ -239,15 +260,16 @@ class AggregatorTest {
 
     // ── errors 노출 ─────────────────────────────────────────────────────
 
-    /**
-     * 파싱 실패를 조용히 삼키면 "세션이 없다"와 "읽지 못했다"가 구별되지 않는다.
-     * docs/02-백엔드.md.
-     */
+    /** 파싱 실패를 조용히 삼키면 "세션이 없다"와 "읽지 못했다"가 구별되지 않는다. docs/02-백엔드.md. */
     @Test
     void 세션_기록을_찾지_못하면_errors_에_남긴다() {
-        BoardSnapshot snap = aggregator("""
+        BoardSnapshot snap =
+                aggregator(
+                                """
                 [{"pid":1,"cwd":"/Users/me/proj","sessionId":"없는세션","name":"a"}]
-                """, 1_000_000L).collect(NOW);
+                """,
+                                1_000_000L)
+                        .collect(NOW);
 
         assertThat(snap.errors())
                 .as("조용히 삼키면 안 된다")
@@ -257,9 +279,13 @@ class AggregatorTest {
 
     @Test
     void 기록을_못_찾아도_세션은_목록에서_빠지지_않는다() {
-        BoardSnapshot snap = aggregator("""
+        BoardSnapshot snap =
+                aggregator(
+                                """
                 [{"pid":1,"cwd":"/Users/me/proj","sessionId":"없는세션","name":"a"}]
-                """, 1_000_000L).collect(NOW);
+                """,
+                                1_000_000L)
+                        .collect(NOW);
 
         // 기록이 없어도 pid 는 있다 — 살아있는 세션이므로 보여야 한다.
         assertThat(snap.projects()).hasSize(1);
@@ -280,10 +306,14 @@ class AggregatorTest {
         writeTranscript("-Users-me-a", "s1", assistantWithUsage(0, 100, "2026-09-03T11:00:00Z"));
         writeTranscript("-Users-me-b", "s2", assistantWithUsage(0, 100, "2026-09-03T11:00:00Z"));
 
-        BoardSnapshot snap = aggregator("""
+        BoardSnapshot snap =
+                aggregator(
+                                """
                 [{"pid":1,"cwd":"/Users/me/a","sessionId":"s1","name":"a"},
                  {"pid":2,"cwd":"/Users/me/b","sessionId":"s2","name":"b"}]
-                """, 1_000_000L).collect(NOW);
+                """,
+                                1_000_000L)
+                        .collect(NOW);
 
         assertThat(snap.counts())
                 .containsEntry("waiting", 2)
@@ -293,7 +323,8 @@ class AggregatorTest {
 
     @Test
     void 프로젝트_이름은_경로의_마지막_조각이다() {
-        assertThat(Aggregator.nameOf("/Users/me/projects/notify-service")).isEqualTo("notify-service");
+        assertThat(Aggregator.nameOf("/Users/me/projects/notify-service"))
+                .isEqualTo("notify-service");
         assertThat(Aggregator.nameOf(null)).isEqualTo("(알 수 없음)");
     }
 
@@ -311,8 +342,8 @@ class AggregatorTest {
 
     @Test
     void 방금_뜬_세션은_기록이_없어도_오류가_아니다() {
-        BoardSnapshot snap = aggregator(
-                agentStartedAt("fresh", NOW.minusSeconds(1)), 1_000_000L).collect(NOW);
+        BoardSnapshot snap =
+                aggregator(agentStartedAt("fresh", NOW.minusSeconds(1)), 1_000_000L).collect(NOW);
 
         assertThat(snap.errors()).isEmpty();
         // 오류가 아닐 뿐 세션 자체는 보여야 한다 — 조용히 사라지면 그것대로 문제다.
@@ -321,8 +352,9 @@ class AggregatorTest {
 
     @Test
     void 뜬_지_오래된_세션에_기록이_없으면_오류다() {
-        BoardSnapshot snap = aggregator(
-                agentStartedAt("stale", NOW.minusSeconds(3600)), 1_000_000L).collect(NOW);
+        BoardSnapshot snap =
+                aggregator(agentStartedAt("stale", NOW.minusSeconds(3600)), 1_000_000L)
+                        .collect(NOW);
 
         assertThat(snap.errors()).containsExactly("세션 기록을 찾지 못함: stale");
     }
@@ -332,17 +364,16 @@ class AggregatorTest {
         Instant justInside = NOW.minus(Aggregator.TRANSCRIPT_GRACE).plusMillis(1);
         Instant justOutside = NOW.minus(Aggregator.TRANSCRIPT_GRACE);
 
-        assertThat(aggregator(agentStartedAt("in", justInside), 1_000_000L)
-                .collect(NOW).errors()).isEmpty();
-        assertThat(aggregator(agentStartedAt("out", justOutside), 1_000_000L)
-                .collect(NOW).errors()).hasSize(1);
+        assertThat(aggregator(agentStartedAt("in", justInside), 1_000_000L).collect(NOW).errors())
+                .isEmpty();
+        assertThat(aggregator(agentStartedAt("out", justOutside), 1_000_000L).collect(NOW).errors())
+                .hasSize(1);
     }
 
     @Test
     void startedAt_이_없으면_기다려주지_않는다() {
         // 판단할 근거가 없다. 근거 없이 조용해지는 쪽보다 시끄러운 쪽이 낫다.
-        BoardSnapshot snap = aggregator(
-                agentStartedAt("no-time", null), 1_000_000L).collect(NOW);
+        BoardSnapshot snap = aggregator(agentStartedAt("no-time", null), 1_000_000L).collect(NOW);
 
         assertThat(snap.errors()).containsExactly("세션 기록을 찾지 못함: no-time");
     }
@@ -350,11 +381,12 @@ class AggregatorTest {
     @Test
     void 방금_떴어도_기록이_있으면_그것을_읽는다() throws IOException {
         // 대기 분기가 기록 읽기를 가로채면 안 된다.
-        writeTranscript("-p-x", "fresh-with-file",
-                assistantWithUsage(0, 100, "2026-09-03T11:59:59Z"));
+        writeTranscript(
+                "-p-x", "fresh-with-file", assistantWithUsage(0, 100, "2026-09-03T11:59:59Z"));
 
-        BoardSnapshot snap = aggregator(
-                agentStartedAt("fresh-with-file", NOW.minusSeconds(1)), 1_000_000L).collect(NOW);
+        BoardSnapshot snap =
+                aggregator(agentStartedAt("fresh-with-file", NOW.minusSeconds(1)), 1_000_000L)
+                        .collect(NOW);
 
         assertThat(snap.errors()).isEmpty();
         assertThat(snap.projects().get(0).current().lastActivityAt()).isNotNull();

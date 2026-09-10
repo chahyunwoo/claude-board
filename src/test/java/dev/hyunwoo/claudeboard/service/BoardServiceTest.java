@@ -1,8 +1,8 @@
 package dev.hyunwoo.claudeboard.service;
 
-import dev.hyunwoo.claudeboard.domain.BoardSnapshot;
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
+import dev.hyunwoo.claudeboard.domain.BoardSnapshot;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -10,14 +10,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 /**
  * 캐시와 구독 통지. docs/02-백엔드.md "전체 갱신 200ms — 병목은 이 저장소 밖에 있다".
  *
- * <p>여기서 검증하는 것은 <b>수집이 요청 경로에 없다</b>는 것이다 —
- * 그게 캐시를 둔 유일한 이유이므로, 이게 깨지면 이 구조 전체가 의미를 잃는다.
+ * <p>여기서 검증하는 것은 <b>수집이 요청 경로에 없다</b>는 것이다 — 그게 캐시를 둔 유일한 이유이므로, 이게 깨지면 이 구조 전체가 의미를 잃는다.
  */
 class BoardServiceTest {
 
@@ -101,7 +99,7 @@ class BoardServiceTest {
         assertThat(service.listenerCount()).isZero();
 
         service.refresh();
-        assertThat(received).hasSize(1);   // 해제 뒤에는 오지 않는다
+        assertThat(received).hasSize(1); // 해제 뒤에는 오지 않는다
     }
 
     @Test
@@ -110,9 +108,10 @@ class BoardServiceTest {
         BoardService service = new BoardService(aggregator, FIXED);
         List<BoardSnapshot> healthy = new ArrayList<>();
 
-        service.subscribe(s -> {
-            throw new IllegalStateException("끊긴 연결");
-        });
+        service.subscribe(
+                s -> {
+                    throw new IllegalStateException("끊긴 연결");
+                });
         service.subscribe(healthy::add);
 
         service.refresh();
