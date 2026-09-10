@@ -9,6 +9,7 @@ import dev.hyunwoo.claudeboard.domain.TranscriptInfo;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -26,6 +27,19 @@ import java.util.TreeMap;
  * <p>Spring 에 의존하지 않는 순수 자바다.
  */
 public final class Aggregator {
+
+    /**
+     * 세션이 뜬 뒤 기록이 쓰이기까지 기다려 주는 시간.
+     *
+     * <p>실측 2026-09-10 (4회): 세션이 {@code claude agents --json} 목록에 나타난 뒤
+     * {@code .jsonl} 이 생기기까지 0.51 · 0.52 · 0.73 · 0.74 초.
+     * 재현: {@code scripts/measure-session-lag.sh}
+     *
+     * <p>최대 0.74 초에 여유를 크게 둔 값이다 — 부하가 걸리면 더 걸릴 수 있고,
+     * 이 창을 넘겨도 잃는 것은 "몇 초 늦게 오류로 잡힌다"뿐이다. 반대로 좁게 잡으면
+     * 정상 상태가 오류로 찍혀 진짜 오류가 그 안에 묻힌다.
+     */
+    static final Duration TRANSCRIPT_GRACE = Duration.ofSeconds(10);
 
     private final AgentsReader agentsReader;
     private final TranscriptReader transcriptReader;
@@ -134,11 +148,35 @@ public final class Aggregator {
         }
     }
 
+    /**
+     * 기록이 아직 안 쓰였을 뿐인가.
+     *
+     * <p>{@code startedAt} 이 없으면 판단할 근거가 없으므로 <b>기다려 주지 않는다</b> —
+     * 근거 없이 조용해지는 쪽보다 시끄러운 쪽이 낫다. 미래 시각이면(시계 틀어짐)
+     * {@code between} 이 음수가 되어 자연히 대기로 잡힌다.
+     */
+    private static boolean isWaitingForTranscript(AgentInfo agent, Instant now) {
+        Instant started = agent.startedAt();
+        if (started == null) {
+            return false;
+        }
+        return Duration.between(started, now).compareTo(TRANSCRIPT_GRACE) < 0;
+    }
+
     /** 살아있는 세션 하나를 기록과 이어 붙인다. */
     private Session toSession(AgentInfo agent, Path file, Instant now, List<String> errors) {
         TranscriptInfo info = TranscriptInfo.empty();
         if (file == null) {
-            errors.add("세션 기록을 찾지 못함: " + agent.sessionId());
+            // ⚠️ '아직 안 쓰였다'와 '진짜 없다'를 가른다.
+            //
+            // Claude Code 는 세션이 agents 목록에 뜬 직후가 아니라 조금 뒤에 기록을
+            // 쓴다. 그 창에 훑으면 "살아있는데 기록이 없는" 상태가 **정상적으로**
+            // 관측된다. 둘을 같은 통에 넣으면 새 세션을 열 때마다 오류가 뜨고,
+            // 오류 목록이 노이즈가 되면 사람이 그것을 안 보게 된다 —
+            // 그러면 진짜 고장을 놓친다.
+            if (!isWaitingForTranscript(agent, now)) {
+                errors.add("세션 기록을 찾지 못함: " + agent.sessionId());
+            }
         } else {
             try {
                 info = transcriptReader.read(file);
