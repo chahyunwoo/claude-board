@@ -296,4 +296,67 @@ class AggregatorTest {
         assertThat(Aggregator.nameOf("/Users/me/projects/notify-service")).isEqualTo("notify-service");
         assertThat(Aggregator.nameOf(null)).isEqualTo("(알 수 없음)");
     }
+
+    // ── 기록이 아직 안 쓰인 세션 (#48) ────────────────────────────────
+    //
+    // Claude Code 는 세션이 agents 목록에 뜬 뒤 조금 지나서 .jsonl 을 쓴다
+    // (실측 0.51~0.74초). 그 창에 훑으면 "살아있는데 기록이 없는" 상태가
+    // 정상적으로 관측되는데, 예전에는 그것을 무조건 오류로 찍었다.
+
+    /** {@code startedAt} 은 epoch millis 로 온다. */
+    private static String agentStartedAt(String sessionId, Instant startedAt) {
+        String at = startedAt == null ? "" : ",\"startedAt\":" + startedAt.toEpochMilli();
+        return "[{\"pid\":1,\"cwd\":\"/p/x\",\"sessionId\":\"" + sessionId + "\"" + at + "}]";
+    }
+
+    @Test
+    void 방금_뜬_세션은_기록이_없어도_오류가_아니다() {
+        BoardSnapshot snap = aggregator(
+                agentStartedAt("fresh", NOW.minusSeconds(1)), 1_000_000L).collect(NOW);
+
+        assertThat(snap.errors()).isEmpty();
+        // 오류가 아닐 뿐 세션 자체는 보여야 한다 — 조용히 사라지면 그것대로 문제다.
+        assertThat(snap.projects()).hasSize(1);
+    }
+
+    @Test
+    void 뜬_지_오래된_세션에_기록이_없으면_오류다() {
+        BoardSnapshot snap = aggregator(
+                agentStartedAt("stale", NOW.minusSeconds(3600)), 1_000_000L).collect(NOW);
+
+        assertThat(snap.errors()).containsExactly("세션 기록을 찾지 못함: stale");
+    }
+
+    @Test
+    void 경계값_직전은_대기_직후는_오류다() {
+        Instant justInside = NOW.minus(Aggregator.TRANSCRIPT_GRACE).plusMillis(1);
+        Instant justOutside = NOW.minus(Aggregator.TRANSCRIPT_GRACE);
+
+        assertThat(aggregator(agentStartedAt("in", justInside), 1_000_000L)
+                .collect(NOW).errors()).isEmpty();
+        assertThat(aggregator(agentStartedAt("out", justOutside), 1_000_000L)
+                .collect(NOW).errors()).hasSize(1);
+    }
+
+    @Test
+    void startedAt_이_없으면_기다려주지_않는다() {
+        // 판단할 근거가 없다. 근거 없이 조용해지는 쪽보다 시끄러운 쪽이 낫다.
+        BoardSnapshot snap = aggregator(
+                agentStartedAt("no-time", null), 1_000_000L).collect(NOW);
+
+        assertThat(snap.errors()).containsExactly("세션 기록을 찾지 못함: no-time");
+    }
+
+    @Test
+    void 방금_떴어도_기록이_있으면_그것을_읽는다() throws IOException {
+        // 대기 분기가 기록 읽기를 가로채면 안 된다.
+        writeTranscript("-p-x", "fresh-with-file",
+                assistantWithUsage(0, 100, "2026-09-03T11:59:59Z"));
+
+        BoardSnapshot snap = aggregator(
+                agentStartedAt("fresh-with-file", NOW.minusSeconds(1)), 1_000_000L).collect(NOW);
+
+        assertThat(snap.errors()).isEmpty();
+        assertThat(snap.projects().get(0).current().lastActivityAt()).isNotNull();
+    }
 }
