@@ -5,9 +5,8 @@ package dev.hyunwoo.claudeboard.domain;
  *
  * <p>{@link #sortOrder} 는 보드 정렬 우선순위다. 답변 대기가 가장 높은 가치이므로 1.
  *
- * <p><b>종료된 세션은 상태로 두지 않는다</b> (#17). 이 보드는 살아있는 세션만 다룬다 —
- * {@code claude agents --json} 이 주는 목록이 곧 대상이고, 종료된 기록은
- * {@code Project.sessionCount} 로 개수만 센다. docs/00-개요.md "범위 밖".
+ * <p><b>종료된 세션은 상태로 두지 않는다</b> (#17). 이 보드는 살아있는 세션만 다룬다 — {@code claude agents --json} 이 주는 목록이 곧
+ * 대상이고, 종료된 기록은 {@code Project.sessionCount} 로 개수만 센다. docs/00-개요.md "범위 밖".
  */
 public enum SessionState {
 

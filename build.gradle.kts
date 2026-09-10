@@ -2,6 +2,19 @@ plugins {
     java
     id("org.springframework.boot") version "3.5.16"
     id("io.spring.dependency-management") version "1.1.7"
+    // 포맷을 IDE 설정에 맡기지 않는다 — 기계가 바뀌어도 결과가 같아야 한다.
+    id("com.diffplug.spotless") version "7.0.4"
+}
+
+// AOSP 스타일(4칸). google-java-format 기본은 2칸인데 이 저장소는 4칸이라
+// 기본값을 쓰면 파일 전체가 재포맷된다.
+spotless {
+    java {
+        googleJavaFormat("1.27.0").aosp()
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
 }
 
 group = "dev.hyunwoo"

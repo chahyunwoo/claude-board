@@ -1,10 +1,9 @@
 package dev.hyunwoo.claudeboard.collect;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import dev.hyunwoo.claudeboard.domain.TranscriptInfo;
 import dev.hyunwoo.claudeboard.domain.TranscriptInfo.RecordKind;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -12,19 +11,17 @@ import java.nio.file.Path;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 /**
  * docs/05-검증.md "반드시 넣을 단위 테스트" ①~⑤.
  *
- * <p>테스트는 소스 문자열이 아니라 <b>동작(실제로 판별된 값)</b>을 관측한다.
- * 소스를 매칭하면 배선이 옳아도 리팩터에 깨진다.
+ * <p>테스트는 소스 문자열이 아니라 <b>동작(실제로 판별된 값)</b>을 관측한다. 소스를 매칭하면 배선이 옳아도 리팩터에 깨진다.
  */
 class TranscriptReaderTest {
 
-    @TempDir
-    Path tmp;
+    @TempDir Path tmp;
 
     private final TranscriptReader reader = new TranscriptReader();
 
@@ -32,9 +29,7 @@ class TranscriptReaderTest {
 
     @Test
     void 마지막이_assistant_면_ASSISTANT_로_읽는다() throws IOException {
-        Path f = write(
-                userText("사용자 발화"),
-                assistant("응답입니다", 100, 200, 300));
+        Path f = write(userText("사용자 발화"), assistant("응답입니다", 100, 200, 300));
 
         TranscriptInfo info = reader.read(f);
 
@@ -46,15 +41,12 @@ class TranscriptReaderTest {
     /**
      * <b>이 테스트가 이 클래스에서 가장 중요하다.</b>
      *
-     * <p>도구 결과는 {@code type: "user"} 로 기록된다. 순진하게 type 만 보면
-     * 사용자 입력으로 오인해 "작업 중"과 "답변 대기"가 정확히 반대로 나온다.
+     * <p>도구 결과는 {@code type: "user"} 로 기록된다. 순진하게 type 만 보면 사용자 입력으로 오인해 "작업 중"과 "답변 대기"가 정확히 반대로
+     * 나온다.
      */
     @Test
     void 마지막이_user_인데_tool_result_블록이면_USER_가_아니라_TOOL_RESULT_다() throws IOException {
-        Path f = write(
-                userText("파일 좀 읽어줘"),
-                assistant("읽을게요", 100, 200, 300),
-                userToolResult());
+        Path f = write(userText("파일 좀 읽어줘"), assistant("읽을게요", 100, 200, 300), userToolResult());
 
         TranscriptInfo info = reader.read(f);
 
@@ -66,9 +58,7 @@ class TranscriptReaderTest {
 
     @Test
     void 마지막_assistant_가_tool_use_면_ASSISTANT_가_아니라_ASSISTANT_TOOL_USE_다() throws IOException {
-        Path f = write(
-                userText("파일 좀 읽어줘"),
-                assistantToolUse());
+        Path f = write(userText("파일 좀 읽어줘"), assistantToolUse());
 
         TranscriptInfo info = reader.read(f);
 
@@ -82,9 +72,7 @@ class TranscriptReaderTest {
 
     @Test
     void 마지막이_user_이고_순수_텍스트면_USER_다() throws IOException {
-        Path f = write(
-                assistant("무엇을 도와드릴까요", 100, 200, 300),
-                userText("이거 고쳐줘"));
+        Path f = write(assistant("무엇을 도와드릴까요", 100, 200, 300), userText("이거 고쳐줘"));
 
         TranscriptInfo info = reader.read(f);
 
@@ -94,8 +82,10 @@ class TranscriptReaderTest {
     @Test
     void content_가_문자열인_user_레코드도_USER_다() throws IOException {
         // 실측: content 가 배열이 아니라 문자열인 user 레코드가 존재한다.
-        Path f = write("{\"type\":\"user\",\"timestamp\":\"2026-09-03T10:00:00Z\","
-                + "\"message\":{\"content\":\"문자열 형태 발화\"}}");
+        Path f =
+                write(
+                        "{\"type\":\"user\",\"timestamp\":\"2026-09-03T10:00:00Z\","
+                                + "\"message\":{\"content\":\"문자열 형태 발화\"}}");
 
         TranscriptInfo info = reader.read(f);
 
@@ -127,9 +117,7 @@ class TranscriptReaderTest {
 
     @Test
     void 마지막_줄이_깨진_JSON_이면_그_줄만_건너뛰고_계속_읽는다() throws IOException {
-        Path f = write(
-                assistant("정상 응답", 100, 200, 300),
-                "{\"type\":\"assistant\", 깨진 JSON");
+        Path f = write(assistant("정상 응답", 100, 200, 300), "{\"type\":\"assistant\", 깨진 JSON");
 
         TranscriptInfo info = reader.read(f);
 
@@ -153,10 +141,11 @@ class TranscriptReaderTest {
 
     @Test
     void 역순이므로_가장_최근_usage_를_쓴다() throws IOException {
-        Path f = write(
-                assistant("오래된 응답", 1, 1000, 0),
-                userToolResult(),
-                assistant("최근 응답", 2, 5000, 0));
+        Path f =
+                write(
+                        assistant("오래된 응답", 1, 1000, 0),
+                        userToolResult(),
+                        assistant("최근 응답", 2, 5000, 0));
 
         TranscriptInfo info = reader.read(f);
 
@@ -167,10 +156,7 @@ class TranscriptReaderTest {
     void lastPrompt_는_tool_result_가_아닌_마지막_user_에서_얻는다() throws IOException {
         // last-prompt 레코드에는 발화 텍스트가 없고 leafUuid 만 있으며 그 uuid 가
         // user 를 가리키지 않는 경우가 많다(실측 24개 중 16개). 그래서 역순 스캔으로 얻는다.
-        Path f = write(
-                userText("진짜 마지막 발화"),
-                assistant("작업할게요", 100, 200, 300),
-                userToolResult());
+        Path f = write(userText("진짜 마지막 발화"), assistant("작업할게요", 100, 200, 300), userToolResult());
 
         TranscriptInfo info = reader.read(f);
 
@@ -179,9 +165,10 @@ class TranscriptReaderTest {
 
     @Test
     void aiTitle_과_branch_를_수집한다() throws IOException {
-        Path f = write(
-                "{\"type\":\"ai-title\",\"aiTitle\":\"결제 재시도 점검\"}",
-                assistant("응답", 100, 200, 300));
+        Path f =
+                write(
+                        "{\"type\":\"ai-title\",\"aiTitle\":\"결제 재시도 점검\"}",
+                        assistant("응답", 100, 200, 300));
 
         TranscriptInfo info = reader.read(f);
 
@@ -220,8 +207,8 @@ class TranscriptReaderTest {
     /**
      * 상한을 넘으면 부분 결과를 낸다 — 예외를 던지지 않는다.
      *
-     * <p>상한을 아주 작게 줘서 파일 끝 한 줌만 읽게 만든다. 그래도 상태 판별에 필요한
-     * {@code lastRecordKind} 는 채워져야 한다. "제목이 없어도 상태 판별은 되어야 한다."
+     * <p>상한을 아주 작게 줘서 파일 끝 한 줌만 읽게 만든다. 그래도 상태 판별에 필요한 {@code lastRecordKind} 는 채워져야 한다. "제목이 없어도
+     * 상태 판별은 되어야 한다."
      */
     @Test
     void 상한을_넘으면_예외_대신_부분_결과를_낸다() throws IOException {
@@ -232,16 +219,15 @@ class TranscriptReaderTest {
         }
         Path f = write(lines.toArray(String[]::new));
 
-        TranscriptReader capped = new TranscriptReader(new com.fasterxml.jackson.databind.ObjectMapper(), 4096);
+        TranscriptReader capped =
+                new TranscriptReader(new com.fasterxml.jackson.databind.ObjectMapper(), 4096);
         TranscriptInfo info = capped.read(f);
 
         assertThat(info.truncated()).isTrue();
         assertThat(info.lastRecordKind())
                 .as("상한에 걸려도 상태 판별은 되어야 한다")
                 .isEqualTo(RecordKind.ASSISTANT);
-        assertThat(info.aiTitle())
-                .as("앞쪽 제목까지는 못 닿는다 — 부분 결과")
-                .isNull();
+        assertThat(info.aiTitle()).as("앞쪽 제목까지는 못 닿는다 — 부분 결과").isNull();
     }
 
     @Test
@@ -264,9 +250,7 @@ class TranscriptReaderTest {
 
         // 필요한 필드를 다 채웠으므로 즉시 중단되어야 한다.
         assertThat(info.aiTitle()).isEqualTo("끝쪽 제목");
-        assertThat(elapsedMs)
-                .as("전체 파싱이면 이보다 훨씬 오래 걸린다")
-                .isLessThan(200);
+        assertThat(elapsedMs).as("전체 파싱이면 이보다 훨씬 오래 걸린다").isLessThan(200);
     }
 
     // ── 픽스처 ──────────────────────────────────────────────────────────

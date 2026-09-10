@@ -1,7 +1,15 @@
 package dev.hyunwoo.claudeboard.web;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import dev.hyunwoo.claudeboard.domain.BoardSnapshot;
 import dev.hyunwoo.claudeboard.service.SnapshotSource;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -12,19 +20,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
-import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-/**
- * {@code GET /api/sessions}. docs/02-백엔드.md 의 응답 스키마와 대응한다.
- */
+/** {@code GET /api/sessions}. docs/02-백엔드.md 의 응답 스키마와 대응한다. */
 @SpringBootTest(properties = "claude-board.interval=1h")
 class BoardControllerTest {
 
@@ -38,14 +34,12 @@ class BoardControllerTest {
         SnapshotSource stubSource() {
             return now -> {
                 COLLECTS.incrementAndGet();
-                return new BoardSnapshot(now, 7, List.of(),
-                        Map.of("waiting", 3), List.of("표본 오류"));
+                return new BoardSnapshot(now, 7, List.of(), Map.of("waiting", 3), List.of("표본 오류"));
             };
         }
     }
 
-    @Autowired
-    WebApplicationContext context;
+    @Autowired WebApplicationContext context;
 
     @Test
     void 응답에_errors_가_반드시_실린다() throws Exception {

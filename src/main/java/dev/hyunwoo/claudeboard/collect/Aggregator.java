@@ -6,7 +6,6 @@ import dev.hyunwoo.claudeboard.domain.Project;
 import dev.hyunwoo.claudeboard.domain.Session;
 import dev.hyunwoo.claudeboard.domain.SessionState;
 import dev.hyunwoo.claudeboard.domain.TranscriptInfo;
-
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -21,8 +20,7 @@ import java.util.TreeMap;
 /**
  * 소스 A(살아있는 세션)와 소스 B(세션 기록)를 이어 프로젝트 단위로 집계한다.
  *
- * <p><b>세션이 아니라 프로젝트가 1급 단위다</b> — 한 프로젝트에 세션이 계속 이어진다.
- * docs/01-데이터.md "프로젝트 단위 집계".
+ * <p><b>세션이 아니라 프로젝트가 1급 단위다</b> — 한 프로젝트에 세션이 계속 이어진다. docs/01-데이터.md "프로젝트 단위 집계".
  *
  * <p>Spring 에 의존하지 않는 순수 자바다.
  */
@@ -31,13 +29,11 @@ public final class Aggregator {
     /**
      * 세션이 뜬 뒤 기록이 쓰이기까지 기다려 주는 시간.
      *
-     * <p>실측 2026-09-10 (4회): 세션이 {@code claude agents --json} 목록에 나타난 뒤
-     * {@code .jsonl} 이 생기기까지 0.51 · 0.52 · 0.73 · 0.74 초.
-     * 재현: {@code scripts/measure-session-lag.sh}
+     * <p>실측 2026-09-10 (4회): 세션이 {@code claude agents --json} 목록에 나타난 뒤 {@code .jsonl} 이 생기기까지 0.51
+     * · 0.52 · 0.73 · 0.74 초. 재현: {@code scripts/measure-session-lag.sh}
      *
-     * <p>최대 0.74 초에 여유를 크게 둔 값이다 — 부하가 걸리면 더 걸릴 수 있고,
-     * 이 창을 넘겨도 잃는 것은 "몇 초 늦게 오류로 잡힌다"뿐이다. 반대로 좁게 잡으면
-     * 정상 상태가 오류로 찍혀 진짜 오류가 그 안에 묻힌다.
+     * <p>최대 0.74 초에 여유를 크게 둔 값이다 — 부하가 걸리면 더 걸릴 수 있고, 이 창을 넘겨도 잃는 것은 "몇 초 늦게 오류로 잡힌다"뿐이다. 반대로 좁게
+     * 잡으면 정상 상태가 오류로 찍혀 진짜 오류가 그 안에 묻힌다.
      */
     static final Duration TRANSCRIPT_GRACE = Duration.ofSeconds(10);
 
@@ -47,11 +43,12 @@ public final class Aggregator {
     private final SessionFiles sessionFiles;
     private final long defaultContextLimit;
 
-    public Aggregator(AgentsReader agentsReader,
-                      TranscriptReader transcriptReader,
-                      StateResolver stateResolver,
-                      SessionFiles sessionFiles,
-                      long defaultContextLimit) {
+    public Aggregator(
+            AgentsReader agentsReader,
+            TranscriptReader transcriptReader,
+            StateResolver stateResolver,
+            SessionFiles sessionFiles,
+            long defaultContextLimit) {
         this.agentsReader = agentsReader;
         this.transcriptReader = transcriptReader;
         this.stateResolver = stateResolver;
@@ -60,15 +57,19 @@ public final class Aggregator {
     }
 
     public static Aggregator withDefaults() {
-        return new Aggregator(new AgentsReader(), new TranscriptReader(),
-                StateResolver.withDefaults(), new SessionFiles(), 1_000_000L);
+        return new Aggregator(
+                new AgentsReader(),
+                new TranscriptReader(),
+                StateResolver.withDefaults(),
+                new SessionFiles(),
+                1_000_000L);
     }
 
     /**
      * 한 번 수집한다.
      *
-     * <p>실패는 {@code errors} 로 <b>반드시 노출</b>한다 — 조용히 삼키면
-     * "세션이 없다"와 "읽지 못했다"가 구별되지 않는다. docs/02-백엔드.md.
+     * <p>실패는 {@code errors} 로 <b>반드시 노출</b>한다 — 조용히 삼키면 "세션이 없다"와 "읽지 못했다"가 구별되지 않는다.
+     * docs/02-백엔드.md.
      */
     public BoardSnapshot collect(Instant now) {
         long start = System.nanoTime();
@@ -109,10 +110,11 @@ public final class Aggregator {
         //
         // 그럼에도 지우지 않는 이유: <b>--json CLI 출력에는 이것이 최종 순서</b>다.
         // docs/05-검증.md 1번이 그 출력을 jq 로 그대로 훑어 상태 판별을 대조한다.
-        projects.sort(Comparator
-                .comparingInt((Project p) -> p.current().state().sortOrder())
-                .thenComparing(p -> p.current().lastActivityAt(),
-                        Comparator.nullsLast(Comparator.reverseOrder())));
+        projects.sort(
+                Comparator.comparingInt((Project p) -> p.current().state().sortOrder())
+                        .thenComparing(
+                                p -> p.current().lastActivityAt(),
+                                Comparator.nullsLast(Comparator.reverseOrder())));
 
         long elapsedMs = (System.nanoTime() - start) / 1_000_000;
         return new BoardSnapshot(now, elapsedMs, projects, countByState(projects), errors);
@@ -151,9 +153,8 @@ public final class Aggregator {
     /**
      * 기록이 아직 안 쓰였을 뿐인가.
      *
-     * <p>{@code startedAt} 이 없으면 판단할 근거가 없으므로 <b>기다려 주지 않는다</b> —
-     * 근거 없이 조용해지는 쪽보다 시끄러운 쪽이 낫다. 미래 시각이면(시계 틀어짐)
-     * {@code between} 이 음수가 되어 자연히 대기로 잡힌다.
+     * <p>{@code startedAt} 이 없으면 판단할 근거가 없으므로 <b>기다려 주지 않는다</b> — 근거 없이 조용해지는 쪽보다 시끄러운 쪽이 낫다. 미래
+     * 시각이면(시계 틀어짐) {@code between} 이 음수가 되어 자연히 대기로 잡힌다.
      */
     private static boolean isWaitingForTranscript(AgentInfo agent, Instant now) {
         Instant started = agent.startedAt();
@@ -186,13 +187,14 @@ public final class Aggregator {
         }
 
         // pid 는 호출부에서 이미 걸렀다 — 여기 오는 것은 살아있는 세션뿐이다.
-        SessionState state = stateResolver.resolve(
-                info.lastRecordKind(), info.lastActivityAt(), now);
+        SessionState state =
+                stateResolver.resolve(info.lastRecordKind(), info.lastActivityAt(), now);
 
         Long limit = contextLimitFor(info.contextTokens());
-        Double ratio = (info.contextTokens() == null || limit == null || limit == 0)
-                ? null
-                : (double) info.contextTokens() / limit;
+        Double ratio =
+                (info.contextTokens() == null || limit == null || limit == 0)
+                        ? null
+                        : (double) info.contextTokens() / limit;
 
         return new Session(
                 agent.sessionId(),
@@ -215,9 +217,8 @@ public final class Aggregator {
     /**
      * 컨텍스트 상한. <b>관측값이 기본 상한을 넘으면 자동으로 올린다.</b>
      *
-     * <p>세션 기록의 모델명은 {@code claude-opus-5} 로만 남아 {@code [1m]} 변형이
-     * 구분되지 않는다 (실측: 671,229 토큰이 관측됐으나 기록상 모델명은 동일).
-     * docs/00-개요.md 결정사항 3, docs/02-백엔드.md "컨텍스트 상한 — 주의".
+     * <p>세션 기록의 모델명은 {@code claude-opus-5} 로만 남아 {@code [1m]} 변형이 구분되지 않는다 (실측: 671,229 토큰이 관측됐으나
+     * 기록상 모델명은 동일). docs/00-개요.md 결정사항 3, docs/02-백엔드.md "컨텍스트 상한 — 주의".
      */
     private Long contextLimitFor(Long observed) {
         if (observed == null) {
@@ -231,29 +232,45 @@ public final class Aggregator {
      *
      * <p>여러 세션이 동시에 살아있을 수 있다 — <b>가장 최근 것을 현재로</b> 삼고 나머지는 접는다.
      */
-    private Project toProject(String cwd,
-                              List<Session> sessions,
-                              Map<String, Path> files,
-                              Map<Path, Integer> sessionCounts) {
+    private Project toProject(
+            String cwd,
+            List<Session> sessions,
+            Map<String, Path> files,
+            Map<Path, Integer> sessionCounts) {
         List<Session> sorted = new ArrayList<>(sessions);
-        sorted.sort(Comparator.comparing(Session::lastActivityAt,
-                Comparator.nullsLast(Comparator.reverseOrder())));
+        sorted.sort(
+                Comparator.comparing(
+                        Session::lastActivityAt, Comparator.nullsLast(Comparator.reverseOrder())));
 
         Session current = sorted.get(0);
         List<Session> others = sorted.subList(1, sorted.size());
 
         // 세션 순번 — 그 프로젝트 기록을 시각순 정렬했을 때의 위치.
         Path dir = dirOf(files.get(current.sessionId()));
-        int count = dir != null ? sessionCounts.getOrDefault(dir, sessions.size()) : sessions.size();
+        int count =
+                dir != null ? sessionCounts.getOrDefault(dir, sessions.size()) : sessions.size();
 
-        return new Project(cwd, nameOf(cwd), withOrdinal(current, count), List.copyOf(others), count);
+        return new Project(
+                cwd, nameOf(cwd), withOrdinal(current, count), List.copyOf(others), count);
     }
 
     /** 현재 세션의 순번은 그 프로젝트의 마지막 세션이므로 총 개수와 같다. */
     private static Session withOrdinal(Session s, int count) {
-        return new Session(s.sessionId(), s.pid(), s.state(), s.title(), s.lastPrompt(),
-                s.branch(), s.permissionMode(), s.model(), s.contextTokens(), s.contextLimit(),
-                s.contextRatio(), s.lastActivityAt(), s.startedAt(), count);
+        return new Session(
+                s.sessionId(),
+                s.pid(),
+                s.state(),
+                s.title(),
+                s.lastPrompt(),
+                s.branch(),
+                s.permissionMode(),
+                s.model(),
+                s.contextTokens(),
+                s.contextLimit(),
+                s.contextRatio(),
+                s.lastActivityAt(),
+                s.startedAt(),
+                count);
     }
 
     private static Path dirOf(Path file) {

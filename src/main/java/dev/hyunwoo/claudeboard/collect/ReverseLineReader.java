@@ -11,8 +11,8 @@ import java.util.Deque;
 /**
  * 파일을 끝에서부터 청크 단위로 읽어 줄을 역순으로 흘려준다.
  *
- * <p>세션 기록이 최대 수 MB 다. 전체를 파싱하면 갱신마다 수백 ms 가 날아가므로
- * <b>끝에서 필요한 만큼만</b> 읽는다. docs/00-개요.md "읽기는 파일 끝에서부터".
+ * <p>세션 기록이 최대 수 MB 다. 전체를 파싱하면 갱신마다 수백 ms 가 날아가므로 <b>끝에서 필요한 만큼만</b> 읽는다. docs/00-개요.md "읽기는 파일
+ * 끝에서부터".
  *
  * <p>{@link #readBytes()} 로 지금까지 읽은 바이트 수를 알 수 있다 — 호출자가 상한을 강제하는 근거다.
  */
@@ -26,10 +26,7 @@ final class ReverseLineReader implements Closeable {
     /** 아직 읽지 않은 영역의 끝. 0 이 되면 파일을 다 읽은 것이다. */
     private long pos;
 
-    /**
-     * 청크 경계에서 잘린 줄의 앞부분. 다음(더 앞쪽) 청크의 마지막 줄과 이어붙인다.
-     * 이걸 빼먹으면 경계에 걸친 레코드가 깨진 JSON 으로 보인다.
-     */
+    /** 청크 경계에서 잘린 줄의 앞부분. 다음(더 앞쪽) 청크의 마지막 줄과 이어붙인다. 이걸 빼먹으면 경계에 걸친 레코드가 깨진 JSON 으로 보인다. */
     private String carry = "";
 
     private long readBytes;
@@ -62,8 +59,8 @@ final class ReverseLineReader implements Closeable {
     /**
      * 앞쪽으로 한 청크 더 읽어 {@link #buffered} 를 채운다.
      *
-     * <p>청크의 첫 조각은 줄 중간에서 잘렸을 수 있으므로 버퍼에 넣지 않고 {@link #carry} 로 넘긴다.
-     * 단 {@code pos == 0} 이면 진짜 파일 시작이므로 잘린 것이 아니다 — 그 처리는 호출부가 한다.
+     * <p>청크의 첫 조각은 줄 중간에서 잘렸을 수 있으므로 버퍼에 넣지 않고 {@link #carry} 로 넘긴다. 단 {@code pos == 0} 이면 진짜 파일
+     * 시작이므로 잘린 것이 아니다 — 그 처리는 호출부가 한다.
      */
     private void fillFromPreviousChunk() throws IOException {
         int size = (int) Math.min(CHUNK, pos);
