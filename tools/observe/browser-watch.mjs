@@ -46,7 +46,7 @@ await page.addInitScript(() => {
   }
 })
 
-await page.goto('http://127.0.0.1:7777', { waitUntil: 'networkidle' })
+await page.goto('http://127.0.0.1:22200', { waitUntil: 'networkidle' })
 await page.waitForTimeout(3000)
 log('페이지 로드 완료')
 

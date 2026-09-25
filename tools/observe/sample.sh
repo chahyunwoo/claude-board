@@ -20,7 +20,7 @@ while kill -0 "$PID" 2>/dev/null; do
   TS=$(date '+%Y-%m-%dT%H:%M:%S')
   NOW=$(date +%s)
 
-  JSON=$(curl -s -m 10 http://127.0.0.1:7777/api/sessions 2>/dev/null)
+  JSON=$(curl -s -m 10 http://127.0.0.1:22200/api/sessions 2>/dev/null)
 
   if [ -n "$JSON" ]; then
     # from_entries 는 쓰지 않는다 — 실측으로 "Cannot use null as object key" 가 났다.
@@ -46,7 +46,7 @@ while kill -0 "$PID" 2>/dev/null; do
   read -r RSS CPU <<< "$(ps -o rss=,pcpu= -p "$PID" | tr -s ' ')"
   THREADS=$(ps -M "$PID" 2>/dev/null | tail -n +2 | wc -l | tr -d ' ')
   # SSE 연결은 자원(포트)으로 센다 — 프로세스 이름으로 세지 않는다
-  EST=$(lsof -nP -iTCP:7777 2>/dev/null | grep -c ESTABLISHED)
+  EST=$(lsof -nP -iTCP:22200 2>/dev/null | grep -c ESTABLISHED)
   FDS=$(lsof -p "$PID" 2>/dev/null | wc -l | tr -d ' ')
   printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$TS" "$RSS" "$CPU" "$THREADS" "$EST" "$FDS" >> "$RES"
 

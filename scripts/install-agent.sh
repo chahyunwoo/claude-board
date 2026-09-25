@@ -52,7 +52,13 @@ sed -e "s|__JAR__|$RUNTIME_JAR|" -e "s|__LOG__|$LOG|" -e "s|__ROOT__|$HOME|" \
 # ⚠️ launchd 밖에서 뜬 고아 프로세스도 여기서 정리한다. 예전 래퍼가 `nohup java &`
 #    로 띄운 것이 남아 있으면 launchd 가 포트를 못 잡아 조용히 실패한다(2026-09-06 실측).
 launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
-pid="$(lsof -nP -iTCP:7777 -sTCP:LISTEN -t 2>/dev/null | head -1 || true)"
+# ⚠️ bootout 은 비동기다. 내려가기 전에 bootstrap 하면 `Bootstrap failed: 5` 로 죽는다
+#    (2026-09-25 실측: 포트 이관 때 아래 kill+sleep 이 건너뛰어져 경합이 드러났다).
+for _ in $(seq 1 10); do
+  launchctl print "$DOMAIN/$LABEL" >/dev/null 2>&1 || break
+  sleep 1
+done
+pid="$(lsof -nP -iTCP:22200 -sTCP:LISTEN -t 2>/dev/null | head -1 || true)"
 [ -n "$pid" ] && { echo "  기존 프로세스 정리 (pid $pid)"; kill "$pid" 2>/dev/null || true; sleep 2; }
 
 # ⭐ 공통 게이트. 표준 형태·기대 목록 등재 여부를 검사하고 설치·등록까지 한다.
@@ -65,7 +71,7 @@ pid="$(lsof -nP -iTCP:7777 -sTCP:LISTEN -t 2>/dev/null | head -1 || true)"
 # 그 사이에 "실패"로 판정하면 멀쩡한 기동을 죽이게 된다 (실측).
 wait_port() {
   for _ in $(seq 1 15); do
-    lsof -nP -iTCP:7777 -sTCP:LISTEN -t >/dev/null 2>&1 && return 0
+    lsof -nP -iTCP:22200 -sTCP:LISTEN -t >/dev/null 2>&1 && return 0
     sleep 1
   done
   return 1
@@ -77,12 +83,12 @@ if ! wait_port; then
   wait_port || true
 fi
 
-pid="$(lsof -nP -iTCP:7777 -sTCP:LISTEN -t 2>/dev/null | head -1 || true)"
+pid="$(lsof -nP -iTCP:22200 -sTCP:LISTEN -t 2>/dev/null | head -1 || true)"
 if [ -z "$pid" ]; then
   echo "✗ 기동 실패 — $LOG 를 봐라" >&2
   launchctl print "$DOMAIN/$LABEL" 2>/dev/null | grep -E "state|runs|last exit" >&2 || true
   exit 1
 fi
 
-echo "✓ 상시 실행 등록 (pid $pid) — http://127.0.0.1:7777"
+echo "✓ 상시 실행 등록 (pid $pid) — http://127.0.0.1:22200"
 launchctl print "$DOMAIN/$LABEL" | grep -E "state = |runs = " | sed 's/^/  /'

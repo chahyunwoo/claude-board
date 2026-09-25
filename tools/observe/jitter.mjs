@@ -5,7 +5,7 @@
 import { chromium } from '../../frontend/node_modules/playwright/index.mjs'
 const b = await chromium.launch()
 const p = await b.newPage({ viewport: { width: 1440, height: 900 } })
-await p.goto('http://127.0.0.1:7777', { waitUntil: 'networkidle' })
+await p.goto('http://127.0.0.1:22200', { waitUntil: 'networkidle' })
 await p.waitForTimeout(3000)
 
 const snap = () => p.evaluate(() => {

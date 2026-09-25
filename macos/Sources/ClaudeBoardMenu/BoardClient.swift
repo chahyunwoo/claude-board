@@ -14,7 +14,7 @@ enum Health: Equatable {
     var isHealthy: Bool { self == .ok }
 }
 
-/// 백엔드(`127.0.0.1:7777`)를 구독하고, **죽으면 되살린다.**
+/// 백엔드(`127.0.0.1:22200`)를 구독하고, **죽으면 되살린다.**
 ///
 /// ## 왜 앱이 워치독을 겸하는가
 ///
@@ -173,7 +173,7 @@ final class BoardClient: ObservableObject {
         return "kill " + pids.map(String.init).joined(separator: " ")
     }
 
-    private let streamURL = URL(string: "http://127.0.0.1:7777/api/stream")!
+    private let streamURL = URL(string: "http://127.0.0.1:22200/api/stream")!
     private var task: Task<Void, Never>?
 
     /// 백엔드를 되살린 횟수. 무한 재시작을 막는다.
@@ -258,7 +258,7 @@ final class BoardClient: ObservableObject {
 
     /// 포트로 센다. 프로세스 이름은 `java` 라 이름으로는 못 가른다 (docs/05-검증.md 4번).
     private func backendAlive() async -> Bool {
-        var request = URLRequest(url: URL(string: "http://127.0.0.1:7777/api/sessions")!)
+        var request = URLRequest(url: URL(string: "http://127.0.0.1:22200/api/sessions")!)
         request.timeoutInterval = 3
         guard let (_, response) = try? await URLSession.shared.data(for: request),
               let http = response as? HTTPURLResponse else { return false }

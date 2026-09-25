@@ -8,13 +8,13 @@ PID="${1:-}"
 # 클래스명은 4번째 필드다. 줄 전체에 정규식을 걸면 안 맞는다 — 실측으로 빈 값이 나왔다.
 # $4 가 정확히 SseEmitter 인 줄만 고른다 (DefaultSseEmitterHandler 같은 내부 클래스 제외).
 count() { jcmd $PID GC.class_histogram 2>/dev/null | awk '$4 == "org.springframework.web.servlet.mvc.method.annotation.SseEmitter" {print $2; exit}'; }
-est()   { lsof -nP -iTCP:7777 2>/dev/null | grep -c ESTABLISHED; }
+est()   { lsof -nP -iTCP:22200 2>/dev/null | grep -c ESTABLISHED; }
 
 echo "기준선(브라우저 1개 상시 연결):  emitter=$(count)  est=$(est)"
 
 # curl 5개를 붙인다
 for i in 1 2 3 4 5; do
-  curl -s -N --no-buffer http://127.0.0.1:7777/api/stream > /dev/null 2>&1 &
+  curl -s -N --no-buffer http://127.0.0.1:22200/api/stream > /dev/null 2>&1 &
   echo $! >> /tmp/sse-pids.txt
 done
 sleep 6

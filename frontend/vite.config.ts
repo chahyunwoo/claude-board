@@ -26,11 +26,14 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    // 전역 포트 블록 22200 의 두 번째 앱 자리(~/.claude/reference/포트-배정.md).
+    port: 22202,
+    strictPort: true,
     proxy: {
       // 백엔드는 127.0.0.1 에만 바인딩한다. localhost 로 적으면 ::1 로 풀려
       // 연결이 거부될 수 있으므로 주소를 그대로 쓴다.
       '/api': {
-        target: 'http://127.0.0.1:7777',
+        target: 'http://127.0.0.1:22200',
         changeOrigin: false,
       },
     },
