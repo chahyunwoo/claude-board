@@ -184,7 +184,7 @@ private struct MenuContent: View {
                     Button("멈춤") { client.stopBackend() }
                 }
                 Button("웹으로 열기") {
-                    NSWorkspace.shared.open(URL(string: "http://127.0.0.1:7777")!)
+                    NSWorkspace.shared.open(URL(string: "http://127.0.0.1:22200")!)
                 }
                 Spacer()
                 // 종료는 오른쪽 끝, 색을 빼서 실수로 누르기 어렵게 둔다.

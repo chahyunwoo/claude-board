@@ -19,7 +19,7 @@ export PATH="/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:${PATH:-}"
 ROOT="${CLAUDE_BOARD_ROOT:-$HOME/Documents/projects/hyunwoo/claude-board}"
 JAR="$ROOT/build/libs/claude-board.jar"
 JAVA="/opt/homebrew/opt/openjdk@21/bin/java"
-PORT=7777
+PORT=22200
 LOG_DIR="$HOME/Library/Logs/claude-board"
 LOG="$LOG_DIR/claude-board.log"
 

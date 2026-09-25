@@ -3,7 +3,7 @@
 # 보드의 판정 vs 기록 파일의 마지막 레코드를 독립적으로 읽어 대조한다.
 # 보드 코드를 쓰지 않고 jq 로 직접 읽는다 — 같은 코드로 검증하면 의미가 없다.
 printf 'boardState\tindependent\tmatch\tproject\tquietMin\tlastKind\n'
-curl -s http://127.0.0.1:7777/api/sessions | jq -r '
+curl -s http://127.0.0.1:22200/api/sessions | jq -r '
   .projects[] | .name as $p | ((.current // empty), ((.others // [])[]))
   | [.sessionId, .state, $p, (.lastActivityAt // "-")] | @tsv' |
 while IFS=$'\t' read -r SID STATE PROJ LAST; do
